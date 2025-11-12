@@ -1537,7 +1537,7 @@ function App() {
   React.useEffect(function(){
     try{
       var st=document.createElement('style');
-      st.textContent='\n.cfw-ai-fab{position:fixed;left:24px;bottom:24px;width:56px;height:56px;border-radius:9999px;background:linear-gradient(135deg,#1f6feb,#9333ea);color:#fff;border:none;box-shadow:0 12px 24px rgba(0,0,0,0.35);cursor:pointer;z-index:2147483606;display:flex;align-items:center;justify-content:center;font-weight:600;transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease}\n.cfw-ai-fab:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 28px rgba(0,0,0,0.4)}\n.cfw-ai-fab.hidden{opacity:0;pointer-events:none}\n.cfw-ai-panel{position:fixed;left:24px;bottom:84px;width:560px;max-width:92vw;background:#0b0f19;border:1px solid #27272a;color:#e5e7eb;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,0.45);padding:14px;transform:translateY(20px) scale(.96);opacity:0;transition:transform .22s ease,opacity .22s ease;z-index:2147483607}\n.cfw-ai-panel.open{transform:translateY(0) scale(1);opacity:1}\n.cfw-ai-title{font-weight:600;margin-bottom:8px}\n.cfw-ai-text{width:100%;height:160px;box-sizing:border-box;background:#0a1220;border:1px solid #3f3f46;color:#e5e7eb;border-radius:10px;padding:10px 12px;font-size:13px}\n.cfw-ai-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}\n.cfw-btn{background:#1f2937;color:#fff;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}\n.cfw-btn.primary{background:#2563eb}';
+      st.textContent='\n@keyframes cfw-pop{0%{transform:translateY(20px) scale(.94);opacity:0}60%{transform:translateY(-2px) scale(1.02);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}\n@keyframes cfw-fab-in{0%{transform:scale(.9);opacity:0}100%{transform:scale(1);opacity:1}}\n.cfw-ai-fab{position:fixed;left:24px;bottom:24px;width:56px;height:56px;border-radius:9999px;background:linear-gradient(135deg,#1f6feb,#9333ea);color:#fff;border:none;box-shadow:0 14px 28px rgba(0,0,0,0.38);cursor:pointer;z-index:2147483606;display:flex;align-items:center;justify-content:center;transition:transform .2s cubic-bezier(.22,1,.36,1),box-shadow .2s cubic-bezier(.22,1,.36,1),opacity .2s ease;animation:cfw-fab-in .22s ease both}\n.cfw-ai-fab:hover{transform:translateY(-3px) scale(1.05);box-shadow:0 18px 32px rgba(0,0,0,0.45)}\n.cfw-ai-fab.hidden{opacity:0;pointer-events:none}\n.cfw-ai-fab svg{width:24px;height:24px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.35))}\n.cfw-ai-backdrop{position:fixed;inset:0;background:rgba(10,12,16,0.48);backdrop-filter:blur(3px);opacity:0;transition:opacity .22s ease;z-index:2147483605}\n.cfw-ai-backdrop.open{opacity:1}\n.cfw-ai-panel{position:fixed;left:24px;bottom:84px;width:560px;max-width:92vw;background:#0b0f19;border:1px solid #27272a;color:#e5e7eb;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,0.45);padding:14px;opacity:0;z-index:2147483607}\n.cfw-ai-panel.open{animation:cfw-pop .28s cubic-bezier(.22,1,.36,1) both}\n.cfw-ai-title{font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:8px}\n.cfw-ai-title svg{width:18px;height:18px}\n.cfw-ai-text{width:100%;height:180px;box-sizing:border-box;background:#0a1220;border:1px solid #3f3f46;color:#e5e7eb;border-radius:10px;padding:10px 12px;font-size:13px}\n.cfw-ai-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}\n.cfw-btn{background:#1f2937;color:#fff;border:none;border-radius:10px;padding:8px 12px;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}\n.cfw-btn:hover{transform:translateY(-1px)}\n.cfw-btn.primary{background:#2563eb}';
       document.head.appendChild(st);
     }catch(_){ }
   }, []);
@@ -1550,26 +1550,29 @@ function App() {
   React.useEffect(function(){
     try{
       if(!aiBuildOpen) return;
+      var backdrop=document.createElement('div'); backdrop.className='cfw-ai-backdrop';
       var panel=document.createElement('div'); panel.className='cfw-ai-panel';
       var title=document.createElement('div'); title.className='cfw-ai-title'; title.textContent='AI Build Flow';
       var ta=document.createElement('textarea'); ta.className='cfw-ai-text'; ta.value=String(aiBuildText||''); ta.placeholder='Describe the flow, e.g., UE initiate attach';
       var actions=document.createElement('div'); actions.className='cfw-ai-actions';
       var btnCancel=document.createElement('button'); btnCancel.className='cfw-btn'; btnCancel.textContent='Cancel';
       var btnGen=document.createElement('button'); btnGen.className='cfw-btn primary'; btnGen.textContent='Generate';
+      var icon=document.createElement('span'); icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l2.9 5.9L21 10.2l-4.5 4.4 1.1 6.4L12 18.6 6.4 21l1.1-6.4L3 10.2l6.1-1.3L12 3z" fill="url(#g)"/><defs><linearGradient id="g" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>';
       actions.appendChild(btnCancel); actions.appendChild(btnGen);
+      title.prepend(icon);
       panel.appendChild(title); panel.appendChild(ta); panel.appendChild(actions);
-      document.body.appendChild(panel);
-      requestAnimationFrame(function(){ try{ panel.classList.add('open'); }catch(_){ } });
+      document.body.appendChild(backdrop); document.body.appendChild(panel);
+      requestAnimationFrame(function(){ try{ backdrop.classList.add('open'); panel.classList.add('open'); }catch(_){ } });
       ta.addEventListener('input', function(){ try{ setAiBuildText(ta.value); }catch(_){ } });
-      btnCancel.addEventListener('click', function(){ try{ panel.classList.remove('open'); }catch(_){ } setTimeout(function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(panel); }catch(_){ } }, 220); });
+      btnCancel.addEventListener('click', function(){ try{ backdrop.classList.remove('open'); panel.classList.remove('open'); }catch(_){ } setTimeout(function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } }, 240); });
       btnGen.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ onAiBuildFlow(); }catch(_){ } });
-      return function(){ try{ document.body.removeChild(panel); }catch(_){ } };
+      return function(){ try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } };
     }catch(_){ }
   }, [aiBuildOpen]);
 
   React.useEffect(function(){
     try{
-      var btn=document.createElement('button'); btn.className='cfw-ai-fab'; btn.textContent='AI'; btn.title='AI Build';
+      var btn=document.createElement('button'); btn.className='cfw-ai-fab'; btn.title='AI Build'; btn.innerHTML='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="rgba(255,255,255,0.15)"/><path d="M7 13c3.5-1 5-3 6-6 2 4 4 6 6 6-3 .5-5 2.5-6 5-1.5-3-3.5-4.5-6-5z" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       function onClick(){ try{ setAiBuildOpen(true); }catch(_){ } }
       btn.addEventListener('click', onClick);
       document.body.appendChild(btn);
