@@ -1137,33 +1137,7 @@ function App() {
           case 21:
             _context2.prev = 21;
             _context2.t0 = _context2["catch"](0);
-            try {
-              var src = Array.isArray(truth) ? truth : [];
-              var pick = [];
-              for (var i = 0; i < Math.min(src.length, 4); i++) {
-                var m2 = src[i];
-                if (!m2 || !m2.from || !m2.to) continue;
-                pick.push({
-                  uid: 'ai_offline_' + Math.random().toString(36).slice(2),
-                  msg: m2,
-                  ie_overrides: {},
-                  from_role: sanitizeRole(m2.from_role || m2.from + '$A', m2, 'from'),
-                  to_role: sanitizeRole(m2.to_role || m2.to + '$A', m2, 'to'),
-                  x: 120 + Math.random() * 280,
-                  y: 120 + Math.random() * 160,
-                  expanded: false,
-                  forceEdit: false
-                });
-              }
-              if (pick.length) {
-                setCanvas(function (prev) { return prev.concat(pick); });
-                if (window.showToast) window.showToast('Offline generated case: ' + pick.length + ' items', 'success');
-              } else {
-                alert('AI generation request error: ' + (_context2.t0 && _context2.t0.message || _context2.t0));
-              }
-            } catch (e) {
-              alert('AI generation request error: ' + (_context2.t0 && _context2.t0.message || _context2.t0));
-            }
+            alert('AI generation request error: ' + (_context2.t0 && _context2.t0.message || _context2.t0));
           case 24:
             _context2.prev = 24;
             setAiBusy(false);
@@ -1465,16 +1439,7 @@ function App() {
           case 24:
             _context4.prev = 24;
             _context4.t0 = _context4["catch"](0);
-            try {
-              var result = runLocalConsistencyCheck();
-              setAiResult(JSON.stringify(result, null, 2));
-              if (result && Array.isArray(result.suggestions)) {
-                applyAiSuggestions(result.suggestions);
-                if (window.showToast) window.showToast('Applied local consistency suggestions: ' + result.suggestions.length + ' items', 'success');
-              }
-            } catch (_) {
-              alert('AI analysis request error: ' + (_context4.t0 && _context4.t0.message || _context4.t0));
-            }
+            alert('AI analysis request error: ' + (_context4.t0 && _context4.t0.message || _context4.t0));
           case 27:
             _context4.prev = 27;
             setAiBusy(false);
