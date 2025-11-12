@@ -46,41 +46,60 @@ class Handler(BaseHTTPRequestHandler):
 
         if path.endswith('/v1/chat/completions') or path == '/v1/chat/completions':
             # OpenAI-compatible response
+            msgs = data.get('messages') or []
+            # Detect generation intent via supported_message_ids hint
+            supported = []
+            for m in msgs:
+                if isinstance(m, dict) and m.get('role') == 'user':
+                    c = m.get('content') or ''
+                    if 'supported_message_ids:' in c:
+                        try:
+                            # content example: 'supported_message_ids: ["id1","id2"]'
+                            arr = c.split('supported_message_ids:')[1].strip()
+                            supported = json.loads(arr)
+                        except Exception:
+                            supported = []
+                        break
+            if supported:
+                gen = list(map(str, supported[:min(10, len(supported))]))
+                resp = {
+                    "id": "mock",
+                    "object": "chat.completion",
+                    "choices": [
+                        {"index": 0, "message": {"role": "assistant", "content": json.dumps({"message_ids": gen}, ensure_ascii=False)}}
+                    ],
+                }
+                self._set_headers(200)
+                self.wfile.write(json.dumps(resp).encode('utf-8'))
+                return
+            # Otherwise treat as analyze case
             case = {}
             try:
-                msgs = data.get('messages') or []
-                # Find last user message that looks like JSON
                 for m in reversed(msgs):
                     if isinstance(m, dict) and m.get('role') == 'user':
                         content = m.get('content') or ''
-                        try:
-                            case = json.loads(content)
-                        except Exception:
-                            case = {}
+                        case = json.loads(content)
                         break
             except Exception:
                 case = {}
-
             items = case.get('items') or []
             suggestions = []
             for it in items:
                 kvs = [v for v in (it.get('ie_values') or []) if v.get('key')]
                 if kvs:
-                    # Choose first IE key in the message and align it to a mock value
                     k = kvs[0].get('key')
                     suggestions.append({
                         "uid": it.get('uid'),
                         "message_id": it.get('message_id'),
                         "overrides": {k: "mock_aligned"},
                     })
-
             content_obj = {"conflicts": [], "alignments": {}, "suggestions": suggestions}
             resp = {
                 "id": "mock",
                 "object": "chat.completion",
                 "choices": [
                     {"index": 0, "message": {"role": "assistant", "content": json.dumps(content_obj, ensure_ascii=False)}}
-                ],
+                    ],
             }
             self._set_headers(200)
             self.wfile.write(json.dumps(resp).encode('utf-8'))

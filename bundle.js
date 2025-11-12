@@ -966,20 +966,6 @@ function App() {
       return String(x).trim();
     }).filter(Boolean);
   }
-  function _truthIds() {
-    var merged = Object.values(byProto || {}).reduce(function (acc, arr) { return acc.concat(arr || []); }, []);
-    return merged.map(function (m) { return String(m.id); });
-  }
-  function _resolveGeneratedIds(ids, prompt) {
-    var all = _truthIds();
-    var set = new Set(all);
-    var inTruth = Array.isArray(ids) ? ids.map(String).filter(function (id) { return set.has(id); }) : [];
-    if (inTruth && inTruth.length) return inTruth;
-    var guess = pickRelevantIds(prompt, all);
-    var inTruth2 = Array.isArray(guess) ? guess.map(String).filter(function (id) { return set.has(id); }) : [];
-    if (inTruth2 && inTruth2.length) return inTruth2;
-    return all.slice(0, Math.min(6, all.length));
-  }
   function buildCaseFromIds(ids) {
     try {
       if (!Array.isArray(ids) || ids.length === 0) {
@@ -989,6 +975,9 @@ function App() {
       var merged = Object.values(byProto || {}).reduce(function (acc, arr) {
         return acc.concat(arr || []);
       }, []);
+      var truthSet = new Set(merged.map(function(m){ return String(m.id); }));
+      var missing = ids.filter(function(id){ return !truthSet.has(String(id)); });
+      if (missing.length) { try { window.showToast('Some IDs not in dataset: ' + missing.slice(0,5).join(', '), 'warn'); } catch(_){ } }
       var pick = ids.map(function (id) {
         return merged.find(function (m) {
           return String(m.id) === String(id);
@@ -1583,8 +1572,8 @@ function App() {
       if (aiOpenAiCompat) payload = Object.assign({}, payload, { stream: !!aiStream });
       fetch(url, { method:'POST', headers: headers, body: JSON.stringify(payload) }).then(function(res){
         if (!(aiOpenAiCompat && aiStream && res && res.body)) return res.json();
-        var content = ''; return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; }).then(function(){ try{ var obj = JSON.parse(content); var ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; if(!ids||!ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } var finalIds = _resolveGeneratedIds(ids, String(aiBuildText||aiPrompt||'')); if(finalIds && finalIds.length){ buildCaseFromIds(finalIds); try{ showAiStatus('Parsed '+finalIds.length+' ids'); }catch(_s){} if (window.aiAutoOptimize) { try { var u = Array.isArray(window.__lastAddedUids)?window.__lastAddedUids.slice():[]; if(u.length){ window.__aiSubset = u.slice(0, 20); onAiAnalyzeCase().then(function(){ window.__aiSubset = u.slice(20, 40); if(window.__aiSubset.length) return onAiAnalyzeCase(); }).then(function(){ window.__aiSubset = null; }); } } catch(_){ } } } }catch(_e){} return null; });
-      }).then(function(data){ if(!data) return; try{ setAiResult(JSON.stringify(data,null,2)); var ids=[]; if(data && Array.isArray(data.message_ids)) ids = data.message_ids.map(String); else if(data && data.choices && data.choices[0] && data.choices[0].message && typeof data.choices[0].message.content==='string'){ var content = data.choices[0].message.content; try{ var obj=JSON.parse(content); if(Array.isArray(obj.message_ids)) ids = obj.message_ids.map(String); }catch(_e){} if(!ids || !ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } } var finalIds = _resolveGeneratedIds(ids, String(aiBuildText||aiPrompt||'')); if(finalIds && finalIds.length){ buildCaseFromIds(finalIds); try{ showAiStatus('Parsed '+finalIds.length+' ids'); }catch(_s){} if (window.aiAutoOptimize) { try { var u = Array.isArray(window.__lastAddedUids)?window.__lastAddedUids.slice():[]; if(u.length){ window.__aiSubset = u.slice(0, 20); onAiAnalyzeCase().then(function(){ window.__aiSubset = u.slice(20, 40); if(window.__aiSubset.length) return onAiAnalyzeCase(); }).then(function(){ window.__aiSubset = null; }); } } catch(_){ } } } }catch(_e){} }).catch(function(e){ alert('AI generation request error: ' + (e && e.message || e)); }).finally(function(){ setAiBusy(false); setAiTask(''); setAiBuildOpen(false); });
+        var content = ''; return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; }).then(function(){ try{ var obj = JSON.parse(content); var ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; if(!ids||!ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } if(ids && ids.length){ buildCaseFromIds(ids); try{ showAiStatus('Parsed '+ids.length+' ids'); }catch(_s){} if (window.aiAutoOptimize) { try { var u = Array.isArray(window.__lastAddedUids)?window.__lastAddedUids.slice():[]; if(u.length){ window.__aiSubset = u.slice(0, 20); onAiAnalyzeCase().then(function(){ window.__aiSubset = u.slice(20, 40); if(window.__aiSubset.length) return onAiAnalyzeCase(); }).then(function(){ window.__aiSubset = null; }); } } catch(_){ } } } }catch(_e){} return null; });
+      }).then(function(data){ if(!data) return; try{ setAiResult(JSON.stringify(data,null,2)); var ids=[]; if(data && Array.isArray(data.message_ids)) ids = data.message_ids.map(String); else if(data && data.choices && data.choices[0] && data.choices[0].message && typeof data.choices[0].message.content==='string'){ var content = data.choices[0].message.content; try{ var obj=JSON.parse(content); if(Array.isArray(obj.message_ids)) ids = obj.message_ids.map(String); }catch(_e){} if(!ids || !ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } } if(ids && ids.length){ buildCaseFromIds(ids); try{ showAiStatus('Parsed '+ids.length+' ids'); }catch(_s){} if (window.aiAutoOptimize) { try { var u = Array.isArray(window.__lastAddedUids)?window.__lastAddedUids.slice():[]; if(u.length){ window.__aiSubset = u.slice(0, 20); onAiAnalyzeCase().then(function(){ window.__aiSubset = u.slice(20, 40); if(window.__aiSubset.length) return onAiAnalyzeCase(); }).then(function(){ window.__aiSubset = null; }); } } catch(_){ } } } }catch(_e){} }).catch(function(e){ alert('AI generation request error: ' + (e && e.message || e)); }).finally(function(){ setAiBusy(false); setAiTask(''); setAiBuildOpen(false); });
     } catch (e) { alert('AI generation request error: ' + (e && e.message || e)); }
   }
 

@@ -1,0 +1,40 @@
+{
+  "step": "analyze",
+  "ok": true,
+  "generated_ids": [
+    "EPC.SGsAP.PAGING-REQUEST.MME->MSC@Rel-17",
+    "EPC.SGsAP.SERVICE-REQUEST.MME->MSC@Rel-17",
+    "EPC.SGsAP.DL-UNITDATA.MME->MSC@Rel-17",
+    "EPC.SGsAP.UL-UNITDATA.MSC->MME@Rel-17",
+    "EPC.MAP.SendRoutingInfoForSM.SMSC->HLR@Rel-17",
+    "EPC.MAP.Mt-ForwardSM.SMSC->VLR@Rel-17",
+    "EPC.MAP.ReportSM-DeliveryStatus.VLR->SMSC@Rel-17",
+    "EPC.GTPv1-C.CreatePDPContextRequest.SGSN->GGSN@Rel-17"
+  ],
+  "generate_raw": {
+    "id": "mock",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"message_ids\": [\"EPC.SGsAP.PAGING-REQUEST.MME->MSC@Rel-17\", \"EPC.SGsAP.SERVICE-REQUEST.MME->MSC@Rel-17\", \"EPC.SGsAP.DL-UNITDATA.MME->MSC@Rel-17\", \"EPC.SGsAP.UL-UNITDATA.MSC->MME@Rel-17\", \"EPC.MAP.SendRoutingInfoForSM.SMSC->HLR@Rel-17\", \"EPC.MAP.Mt-ForwardSM.SMSC->VLR@Rel-17\", \"EPC.MAP.ReportSM-DeliveryStatus.VLR->SMSC@Rel-17\", \"EPC.GTPv1-C.CreatePDPContextRequest.SGSN->GGSN@Rel-17\"]}"
+        }
+      }
+    ]
+  },
+  "analyze_raw": {
+    "id": "mock",
+    "object": "chat.completion",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": "{\"conflicts\": [], \"alignments\": {}, \"suggestions\": [{\"uid\": \"U_EPC_SGsAP_PAGING-REQUEST_MME->MSC@Rel-17\", \"message_id\": \"EPC.SGsAP.PAGING-REQUEST.MME->MSC@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_SGsAP_SERVICE-REQUEST_MME->MSC@Rel-17\", \"message_id\": \"EPC.SGsAP.SERVICE-REQUEST.MME->MSC@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_SGsAP_DL-UNITDATA_MME->MSC@Rel-17\", \"message_id\": \"EPC.SGsAP.DL-UNITDATA.MME->MSC@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_SGsAP_UL-UNITDATA_MSC->MME@Rel-17\", \"message_id\": \"EPC.SGsAP.UL-UNITDATA.MSC->MME@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_MAP_SendRoutingInfoForSM_SMSC->HLR@Rel-17\", \"message_id\": \"EPC.MAP.SendRoutingInfoForSM.SMSC->HLR@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_MAP_Mt-ForwardSM_SMSC->VLR@Rel-17\", \"message_id\": \"EPC.MAP.Mt-ForwardSM.SMSC->VLR@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_MAP_ReportSM-DeliveryStatus_VLR->SMSC@Rel-17\", \"message_id\": \"EPC.MAP.ReportSM-DeliveryStatus.VLR->SMSC@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}, {\"uid\": \"U_EPC_GTPv1-C_CreatePDPContextRequest_SGSN->GGSN@Rel-17\", \"message_id\": \"EPC.GTPv1-C.CreatePDPContextRequest.SGSN->GGSN@Rel-17\", \"overrides\": {\"IMSI\": \"mock_aligned\"}}]}"
+        }
+      }
+    ]
+  }
+}
