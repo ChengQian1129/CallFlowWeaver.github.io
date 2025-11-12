@@ -1561,16 +1561,24 @@ function App() {
       var actions=document.createElement('div'); actions.className='cfw-ai-actions';
       var btnCancel=document.createElement('button'); btnCancel.className='cfw-btn'; btnCancel.textContent='Cancel';
       var btnGen=document.createElement('button'); btnGen.className='cfw-btn primary'; btnGen.textContent='Generate';
+      var btnGenOpt=document.createElement('button'); btnGenOpt.className='cfw-btn primary'; btnGenOpt.textContent='Generate + Optimize';
+      var optRow=document.createElement('div'); optRow.style.cssText='display:flex;align-items:center;gap:10px;margin:8px 0 6px 0;color:#cbd5e1;font-size:12px';
+      var optLabel=document.createElement('label'); optLabel.style.cssText='display:flex;align-items:center;gap:8px;cursor:pointer';
+      var optChk=document.createElement('input'); optChk.type='checkbox'; optChk.checked=true; optChk.style.cssText='accent-color:#2563eb';
+      var optText=document.createElement('span'); optText.textContent='Auto Optimize after generation';
+      optLabel.appendChild(optChk); optLabel.appendChild(optText); optRow.appendChild(optLabel);
       var icon=document.createElement('span'); icon.innerHTML='<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l2.9 5.9L21 10.2l-4.5 4.4 1.1 6.4L12 18.6 6.4 21l1.1-6.4L3 10.2l6.1-1.3L12 3z" fill="url(#g)"/><defs><linearGradient id="g" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse"><stop stop-color="#60a5fa"/><stop offset="1" stop-color="#a78bfa"/></linearGradient></defs></svg>';
-      actions.appendChild(btnCancel); actions.appendChild(btnGen);
+      actions.appendChild(btnCancel); actions.appendChild(btnGen); actions.appendChild(btnGenOpt);
       title.prepend(icon);
-      panel.appendChild(title); panel.appendChild(ta); panel.appendChild(actions);
+      panel.appendChild(title); panel.appendChild(ta); panel.appendChild(optRow); panel.appendChild(actions);
       document.body.appendChild(backdrop); document.body.appendChild(panel);
       requestAnimationFrame(function(){ try{ backdrop.classList.add('open'); panel.classList.add('open'); }catch(_){ } });
       ta.addEventListener('input', function(){ try{ setAiBuildText(ta.value); }catch(_){ } });
       ta.addEventListener('keydown', function(e){ try{ if(e && e.ctrlKey && (e.key||'').toLowerCase()==='enter'){ setAiBuildText(ta.value); onAiBuildFlow(); } }catch(_){ } });
       btnCancel.addEventListener('click', function(){ try{ backdrop.classList.remove('open'); panel.classList.remove('open'); }catch(_){ } setTimeout(function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } }, 240); });
       btnGen.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ onAiBuildFlow(); }catch(_){ } });
+      btnGenOpt.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ window.aiAutoOptimize = true; onAiBuildFlow(); }catch(_){ } });
+      optChk.addEventListener('change', function(){ try{ window.aiAutoOptimize = !!optChk.checked; }catch(_){ } });
       return function(){ try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } };
     }catch(_){ }
   }, [aiBuildOpen]);
