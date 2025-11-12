@@ -1608,7 +1608,14 @@ function App() {
     try{
       var b=document && document.body; if(!b) return;
       var on = !!aiBuildOpen;
-      b.classList.toggle('ai-mode', on);
+      b.classList.remove('ai-mode');
+      if(on){
+        b.classList.remove('ai-out');
+        b.classList.add('ai-on');
+      }else{
+        b.classList.remove('ai-on');
+        b.classList.add('ai-out');
+      }
       var btn = document.querySelector('.cfw-ai-fab');
       if(btn){
         var rect = btn.getBoundingClientRect();
