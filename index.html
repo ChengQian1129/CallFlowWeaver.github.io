@@ -344,18 +344,7 @@
             });
             window.lanes = function(){ var set=new Set(); (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); }); return Array.from(set); };
           }catch(e){}
-          try{
-            var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
-            var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
-            if(!hasCanvas){
-              var items=[]; for(var k=0;k<arr.length;k++){ var m3=arr[k]; if(!m3||!m3.from||!m3.to) continue;
-                items.push({ uid:'default_'+Date.now()+'_'+k, msg:m3, ie_overrides:{}, from_role:(m3.from_role||(m3.from+'$A')), to_role:(m3.to_role||(m3.to+'$A')),
-                  x: 120 + (k%20)*220, y: 120 + Math.floor(k/20)*120, expanded:false, forceEdit:false }); }
-              if(items.length){ var caseData={ caseName:'Rel18_Full', caseDesc:'Built from non5gc_rel18.final.rich.jsonl', canvas: items, savedAt: Date.now() };
-                localStorage.setItem('5gc_current_case', JSON.stringify(caseData)); var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
-                casesMap['Rel18_Full']=caseData; localStorage.setItem('5gc_cases', JSON.stringify(casesMap)); }
-            }
-          }catch(_e){}
+          try{ /* no auto case seeding; import-only */ }catch(_e){}
           try{ if(window.__appMounted){ if(!window.__ingestReloaded){ window.__ingestReloaded = true; location.reload(); } } }catch(_e){}
         };
         if(location.protocol==='file:'){
