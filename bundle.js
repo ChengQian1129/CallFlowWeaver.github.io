@@ -1589,7 +1589,15 @@ function App() {
       requestAnimationFrame(function(){ try{ backdrop.classList.add('open'); panel.classList.add('open'); }catch(_){ } });
       ta.addEventListener('input', function(){ try{ setAiBuildText(ta.value); }catch(_){ } });
       ta.addEventListener('keydown', function(e){ try{ if(e && e.ctrlKey && (e.key||'').toLowerCase()==='enter'){ setAiBuildText(ta.value); onAiBuildFlow(); } }catch(_){ } });
-      btnCancel.addEventListener('click', function(){ try{ backdrop.classList.remove('open'); panel.classList.remove('open'); }catch(_){ } setTimeout(function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } }, 240); });
+      btnCancel.addEventListener('click', function(){
+        try{ backdrop.classList.remove('open'); panel.classList.remove('open'); }catch(_){ }
+        try{ setAiBuildOpen(false); }catch(_){ }
+        try{ var fab=document.querySelector('.cfw-ai-fab'); if(fab) fab.classList.add('hidden'); }catch(_){ }
+        setTimeout(function(){
+          try{ var fab2=document.querySelector('.cfw-ai-fab'); if(fab2) fab2.classList.remove('hidden'); }catch(_){ }
+          try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ }
+        }, 240);
+      });
       btnGen.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ onAiBuildFlow(); }catch(_){ } });
       btnGenOpt.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ window.aiAutoOptimize = true; onAiBuildFlow(); }catch(_){ } });
       optChk.addEventListener('change', function(){ try{ window.aiAutoOptimize = !!optChk.checked; }catch(_){ } });

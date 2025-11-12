@@ -54,7 +54,7 @@
     .card:has(details:not([open])) { padding: 8px; }
 
     :root { --ai-x1:20%; --ai-y1:20%; --ai-x2:80%; --ai-y2:30%; --ai-x3:30%; --ai-y3:80%; }
-    body::before { content:""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; transition: opacity .35s ease; background: radial-gradient(1200px 600px at var(--ai-x1) var(--ai-y1), rgba(59,130,246,0.20), transparent 60%), radial-gradient(1000px 500px at var(--ai-x2) var(--ai-y2), rgba(236,72,153,0.18), transparent 60%), radial-gradient(900px 600px at var(--ai-x3) var(--ai-y3), rgba(34,197,94,0.16), transparent 60%); animation: aiFlow 12s ease-in-out infinite; filter: saturate(1.2) blur(0.5px); }
+    body::before { content:""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; transition: opacity .24s ease; background: radial-gradient(1200px 600px at var(--ai-x1) var(--ai-y1), rgba(59,130,246,0.20), transparent 60%), radial-gradient(1000px 500px at var(--ai-x2) var(--ai-y2), rgba(236,72,153,0.18), transparent 60%), radial-gradient(900px 600px at var(--ai-x3) var(--ai-y3), rgba(34,197,94,0.16), transparent 60%); animation: aiFlow 12s ease-in-out infinite; filter: saturate(1.2) blur(0.5px); }
     .ai-mode::before { opacity: 1; }
     @keyframes aiFlow { 0% { transform: translate3d(0,0,0); } 33% { transform: translate3d(8px,-6px,0); } 66% { transform: translate3d(-6px,8px,0); } 100% { transform: translate3d(0,0,0); } }
     body { position: relative; z-index: 1; }
