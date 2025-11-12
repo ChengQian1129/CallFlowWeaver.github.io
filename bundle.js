@@ -608,6 +608,13 @@ function App() {
       if (txt != null) setText(String(txt));
     } catch (_) {}
     try {
+      if (txt == null && window.truthDb && typeof window.truthDb.getRaw === 'function') {
+        window.truthDb.getRaw().then(function (raw) {
+          if (raw) setText(String(raw));
+        })["catch"](function () {});
+      }
+    } catch (_) {}
+    try {
       var rawTruth = localStorage.getItem('5gc_imported_truth');
       if (rawTruth) {
         var arr = JSON.parse(rawTruth);
@@ -627,13 +634,27 @@ function App() {
     function onReady() {
       try {
         var raw = localStorage.getItem('5gc_imported_truth');
+        var handled = false;
         if (raw) {
           var arr = JSON.parse(raw);
-          if (Array.isArray(arr)) {
+          if (Array.isArray(arr) && arr.length) {
             setTruth(arr);
             setByProto(groupMode === 'interface' ? groupByInterface(arr) : groupByProto(arr));
             setImportInfo({ ok: arr.length, err: 0 });
+            handled = true;
           }
+        }
+        if (!handled && window.truthDb && typeof window.truthDb.getRaw === 'function') {
+          window.truthDb.getRaw().then(function (text) {
+            if (!text) return;
+            var r = parseJSONAny(text);
+            var items = r && r.items || [];
+            if (Array.isArray(items) && items.length) {
+              setTruth(items);
+              setByProto(groupMode === 'interface' ? groupByInterface(items) : groupByProto(items));
+              setImportInfo({ ok: items.length, err: r.errors && r.errors.length || 0 });
+            }
+          })["catch"](function () {});
         }
       } catch (_) {}
     }
@@ -645,13 +666,27 @@ function App() {
     var timer = setTimeout(function () {
       try {
         var raw = localStorage.getItem('5gc_imported_truth');
+        var updated = false;
         if (raw) {
           var arr = JSON.parse(raw);
           if (Array.isArray(arr) && arr.length && (!truth || truth.length === 0)) {
             setTruth(arr);
             setByProto(groupMode === 'interface' ? groupByInterface(arr) : groupByProto(arr));
             setImportInfo({ ok: arr.length, err: 0 });
+            updated = true;
           }
+        }
+        if (!updated && (!truth || truth.length === 0) && window.truthDb && typeof window.truthDb.getRaw === 'function') {
+          window.truthDb.getRaw().then(function (text) {
+            if (!text) return;
+            var r = parseJSONAny(text);
+            var items = r && r.items || [];
+            if (Array.isArray(items) && items.length) {
+              setTruth(items);
+              setByProto(groupMode === 'interface' ? groupByInterface(items) : groupByProto(items));
+              setImportInfo({ ok: items.length, err: r.errors && r.errors.length || 0 });
+            }
+          })["catch"](function () {});
         }
       } catch (_) {}
     }, 1200);
@@ -707,7 +742,12 @@ function App() {
   }, [text]);
   React.useEffect(function () {
     try {
-      localStorage.setItem('5gc_imported_truth', JSON.stringify(Array.isArray(truth) ? truth : []));
+      var s = JSON.stringify(Array.isArray(truth) ? truth : []);
+      if (s.length < 4500000) {
+        localStorage.setItem('5gc_imported_truth', s);
+      } else {
+        localStorage.setItem('5gc_imported_truth_meta', JSON.stringify({ count: Array.isArray(truth) ? truth.length : 0, ts: Date.now() }));
+      }
     } catch (_) {}
   }, [truth]);
   // 根据分组模式与导入数据动态计算左栏分组
