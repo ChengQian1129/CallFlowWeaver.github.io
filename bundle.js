@@ -641,6 +641,23 @@ function App() {
     return function () { try { document.removeEventListener('truthcache-ready', onReady); } catch (_) {} };
   }, [groupMode]);
 
+  React.useEffect(function () {
+    var timer = setTimeout(function () {
+      try {
+        var raw = localStorage.getItem('5gc_imported_truth');
+        if (raw) {
+          var arr = JSON.parse(raw);
+          if (Array.isArray(arr) && arr.length && (!truth || truth.length === 0)) {
+            setTruth(arr);
+            setByProto(groupMode === 'interface' ? groupByInterface(arr) : groupByProto(arr));
+            setImportInfo({ ok: arr.length, err: 0 });
+          }
+        }
+      } catch (_) {}
+    }, 1200);
+    return function () { try { clearTimeout(timer); } catch (_) {} };
+  }, [truth, groupMode]);
+
   // 持久化设置
   React.useEffect(function () {
     try {
