@@ -307,8 +307,14 @@
         var autoload = params.get('autoload');
         if(autoload){ return; }
         var ingest = function(t){
-          var lines=t.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;});
-          var arr=[]; lines.forEach(function(s){ try{ arr.push(JSON.parse(s)); }catch(e){} });
+          try{ t = String(t||'').replace(/^\uFEFF/, ''); }catch(_e){}
+          var arr=[];
+          try{ var parsed = JSON.parse(t); if(Array.isArray(parsed)) arr = parsed.slice(); }catch(_e){}
+          if(!Array.isArray(arr) || arr.length===0){
+            var lines=t.split(/\r?\n/);
+            var out=[]; for(var i=0;i<lines.length;i++){ var s=(lines[i]||'').trim(); if(!s) continue; try{ out.push(JSON.parse(s)); }catch(_e){} }
+            arr = out;
+          }
           if(!arr.length) return;
           try{ if(window.truthDb && typeof window.truthDb.putRaw==='function') window.truthDb.putRaw(t); }catch(_e){}
           try{ localStorage.setItem('5gc_imported_truth', JSON.stringify(arr)); localStorage.setItem('5gc_import_text', lines.join('\n')); }catch(_e){}
