@@ -1086,6 +1086,13 @@ function App() {
             return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; });
           case 18:
             try { obj = JSON.parse(content); ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; } catch (_){}
+            if (!ids || !ids.length) {
+              var ticks2 = content.match(/`([^`]+)`/g);
+              if (ticks2) {
+                var c2 = ticks2.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean);
+                if (c2 && c2.length) ids = Array.from(new Set(c2.map(String)));
+              }
+            }
             if (ids && ids.length) { buildCaseFromIds(ids); }
             _context2.next = 22;
             break;
@@ -1126,6 +1133,13 @@ function App() {
               if (ids.length === 0) {
                 m = content.match(/msg_\d+/g);
                 if (m) ids = Array.from(new Set(m.map(String)));
+              }
+              if (ids.length === 0) {
+                var ticks = content.match(/`([^`]+)`/g);
+                if (ticks) {
+                  var cands = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean);
+                  if (cands && cands.length) ids = Array.from(new Set(cands.map(String)));
+                }
               }
               if (ids.length > 0) {
                 buildCaseFromIds(ids);
