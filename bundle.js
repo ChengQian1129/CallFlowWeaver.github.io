@@ -606,15 +606,17 @@ function App() {
 
   // 读取 AI 设置与输入
   React.useEffect(function () {
+    var hasStored = false;
     try {
       var raw = localStorage.getItem('viewerAI');
       if (raw) {
         var s = JSON.parse(raw);
-        if (typeof s.apiUrl === 'string') setAiApiUrl(s.apiUrl);
+        if (typeof s.apiUrl === 'string') { setAiApiUrl(s.apiUrl); hasStored = true; }
         if (typeof s.apiKey === 'string') setAiApiKey(s.apiKey);
         if (typeof s.model === 'string') setAiModel(s.model);
       }
     } catch (_) {}
+    var hasUrl = false;
     try {
       var params = new URLSearchParams(location.search || '');
       var qUrl = params.get('aiUrl');
@@ -622,14 +624,14 @@ function App() {
       var qModel = params.get('aiModel');
       var qOpen = params.get('aiOpenAI');
       var qStream = params.get('aiStream');
-      if (qUrl) setAiApiUrl(String(qUrl).trim());
+      if (qUrl) { setAiApiUrl(String(qUrl).trim()); hasUrl = true; }
       if (qKey) setAiApiKey(String(qKey).trim());
       if (qModel) setAiModel(String(qModel).trim());
       if (qOpen != null) setAiOpenAiCompat(qOpen === '1' || qOpen === 'true');
       if (qStream != null) setAiStream(qStream === '1' || qStream === 'true');
     } catch (_) {}
     try {
-      var needDefaults = !aiApiUrl;
+      var needDefaults = !(hasUrl || hasStored);
       if (needDefaults) {
         setAiApiUrl('https://x666.me/v1');
         setAiModel('gemini-2.5-pro');

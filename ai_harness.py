@@ -3,7 +3,7 @@ import json
 import sys
 import re
 from pathlib import Path
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import urllib.request
 
 def read_text(p: Path) -> str:
@@ -39,8 +39,11 @@ def truth_ids(items: List[Dict[str, Any]]) -> List[str]:
             out.append(str(i))
     return out
 
-def post_json(url: str, data: Dict[str, Any]) -> Dict[str, Any]:
-    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers={'Content-Type':'application/json'})
+def post_json(url: str, data: Dict[str, Any], api_key: Optional[str] = None) -> Dict[str, Any]:
+    headers = {'Content-Type':'application/json'}
+    if api_key:
+        headers['Authorization'] = f'Bearer {api_key}'
+    req = urllib.request.Request(url, data=json.dumps(data).encode('utf-8'), headers=headers)
     with urllib.request.urlopen(req, timeout=20) as resp:
         txt = resp.read().decode('utf-8', errors='ignore')
         try:
@@ -48,9 +51,11 @@ def post_json(url: str, data: Dict[str, Any]) -> Dict[str, Any]:
         except Exception:
             return {'raw': txt}
 
-def normalize_endpoint(ep: str) -> str:
+def normalize_endpoint(ep: str, openai: bool) -> str:
     base = re.sub(r"/+\Z", '', ep.strip())
-    return base + '/chat/completions' if base.endswith('/v1') else base
+    if openai:
+        return base + '/chat/completions' if base.endswith('/v1') else base
+    return base
 
 def pick_ids_from_prompt(prompt: str, ids: List[str]) -> List[str]:
     p = (prompt or '').lower()
@@ -105,6 +110,9 @@ def main():
     g.add_argument('--strict', dest='strict', action='store_true')
     g.add_argument('--no-strict', dest='strict', action='store_false')
     ap.set_defaults(strict=True)
+    ap.add_argument('--api_key', help='API key (use env instead in practice)')
+    ap.add_argument('--api_key_env', help='Environment variable name containing API key')
+    ap.add_argument('--openai', action='store_true', help='Use OpenAI-compatible /v1/chat/completions endpoint')
     args = ap.parse_args()
 
     ds = Path(args.dataset)
@@ -124,8 +132,13 @@ def main():
         {'role':'user','content':'supported_message_ids: ' + json.dumps(supported)}
     ]
     payload = {'model': args.model, 'messages': messages}
-    url = normalize_endpoint(args.endpoint)
-    data = post_json(url, payload)
+    api_key = None
+    if args.api_key_env:
+        api_key = os.environ.get(args.api_key_env)
+    if not api_key and args.api_key:
+        api_key = args.api_key
+    url = normalize_endpoint(args.endpoint, args.openai)
+    data = post_json(url, payload, api_key=api_key)
 
     gen_ids = []
     content = None
@@ -139,7 +152,7 @@ def main():
 
     v = validate_ids(gen_ids, ids, args.min_ids, args.max_ids)
     if not v['ok']:
-        report = {'step':'generate', 'ok':False, 'reason':'ids_invalid', 'validation':v, 'raw':data}
+        report = {'step':'generate', 'ok':False, 'reason':'ids_invalid', 'validation':v, 'raw':data, 'endpoint': args.endpoint, 'model': args.model}
         Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
         print('GENERATE_INVALID', v)
         if args.strict:
@@ -161,7 +174,7 @@ def main():
         {'role':'user','content':json.dumps(case, ensure_ascii=False)}
     ]
     payload2 = {'model': args.model, 'messages': messages2}
-    data2 = post_json(url, payload2)
+    data2 = post_json(url, payload2, api_key=api_key)
 
     ok_suggestions = False
     try:
@@ -171,7 +184,7 @@ def main():
     except Exception:
         ok_suggestions = False
 
-    report = {'step':'analyze', 'ok':ok_suggestions, 'generated_ids':v['used_ids'], 'generate_raw':data, 'analyze_raw':data2}
+    report = {'step':'analyze', 'ok':ok_suggestions, 'generated_ids':v['used_ids'], 'generate_raw':data, 'analyze_raw':data2, 'endpoint': args.endpoint, 'model': args.model}
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     print('ANALYZE_OK' if ok_suggestions else 'ANALYZE_FAIL')
     sys.exit(0 if ok_suggestions else 1)
