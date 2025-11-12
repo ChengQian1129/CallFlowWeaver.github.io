@@ -388,7 +388,7 @@
         'https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js',
         'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js'
       ]; var i=0; function next(){ if(window.React && window.ReactDOM) return cb(); if(i>=list.length) return cb(); load(list[i++], next); } next(); }
-      function loadBundle(){ var s=document.createElement('script'); s.src='./bundle.js'; s.charset='utf-8'; document.body.appendChild(s); }
+      function loadBundle(){ var s=document.createElement('script'); var v=String(Date.now()); s.src='./bundle.js?v='+v; s.charset='utf-8'; document.body.appendChild(s); }
       if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ ensureReact(loadBundle); }); else ensureReact(loadBundle);
     })();
   </script>
