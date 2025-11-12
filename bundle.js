@@ -747,6 +747,31 @@ function App() {
     return function () { try { clearInterval(iv); } catch (_) {} };
   }, [truth, groupMode]);
 
+  React.useEffect(function () {
+    try {
+      if ((truth && truth.length) || typeof location === 'undefined') return;
+      if ((location.protocol || '').indexOf('http') !== 0) return;
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done || (truth && truth.length)) return;
+        try {
+          fetch('./non5gc_rel18.final.rich.jsonl').then(function (r) { return r.text(); }).then(function (t) {
+            if (!t || (truth && truth.length)) return;
+            var r = parseJSONAny(t);
+            var items = r && r.items || [];
+            if (Array.isArray(items) && items.length) {
+              setTruth(items);
+              setByProto(groupMode === 'interface' ? groupByInterface(items) : groupByProto(items));
+              setImportInfo({ ok: items.length, err: r.errors && r.errors.length || 0 });
+              try { localStorage.setItem('5gc_import_text', String(t)); } catch (_) {}
+            }
+          })["catch"](function () {});
+        } catch (_) {}
+      }, 1800);
+      return function () { try { done = true; clearTimeout(timer); } catch (_) {} };
+    } catch (_) {}
+  }, [truth, groupMode]);
+
   // 持久化设置
   React.useEffect(function () {
     try {
