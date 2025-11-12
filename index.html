@@ -371,21 +371,8 @@
           }
         }else{
           var params = new URLSearchParams(location.search||'');
-          var q = (params.get('datasets')||'').trim();
-          var list = [];
-          if(q){ list = q.split(',').map(function(s){ return s.trim(); }).filter(Boolean); }
-          if(list.length===0){ list = [
-            './non5gc_rel18.final.rich.jsonl',
-            './non5gc_rel18.v9.stage2.jsonl',
-            './non5gc_rel18_backup1.jsonl',
-            './5gc_rel18.jsonl'
-          ]; }
-          Promise.allSettled(list.map(function(src){ return fetch(src).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }); })).then(function(results){
-            var texts = results.map(function(x){ return (x && x.status==='fulfilled') ? String(x.value||'') : ''; }).filter(function(s){ return !!s; });
-            if(!texts.length){ return; }
-            var combined = texts.join('\n');
-            ingest(combined);
-          }).catch(function(e){ try{ console.error('Dataset autoload failed:', e); }catch(_e){} });
+          var src = (params.get('dataset') || params.get('autoload') || './non5gc_rel18.final.rich.jsonl').trim();
+          fetch(src).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }).then(function(t){ ingest(t); }).catch(function(e){ try{ console.error('Dataset autoload failed:', e); }catch(_e){} });
         }
       }catch(e){}
     })();
