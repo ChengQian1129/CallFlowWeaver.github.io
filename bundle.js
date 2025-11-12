@@ -1072,17 +1072,27 @@ function App() {
                 }))
               };
             }
+            if (aiOpenAiCompat) payload = Object.assign({}, payload, { stream: !!aiStream });
             _context2.next = 13;
-            return fetch(url, {
-              method: 'POST',
-              headers: headers,
-              body: JSON.stringify(payload)
-            });
+            return fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
           case 13:
             res = _context2.sent;
-            _context2.next = 16;
+            if (!(aiOpenAiCompat && aiStream && res && res.body)) {
+              _context2.next = 20;
+              break;
+            }
+            content = '';
+            _context2.next = 18;
+            return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; });
+          case 18:
+            try { obj = JSON.parse(content); ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; } catch (_){}
+            if (ids && ids.length) { buildCaseFromIds(ids); }
+            _context2.next = 22;
+            break;
+          case 20:
+            _context2.next = 22;
             return res.json();
-          case 16:
+          case 22:
             data = _context2.sent;
             setAiResult(JSON.stringify(data, null, 2));
             if (data && Array.isArray(data.message_ids)) {
@@ -1127,7 +1137,33 @@ function App() {
           case 21:
             _context2.prev = 21;
             _context2.t0 = _context2["catch"](0);
-            alert('AI generation request error: ' + (_context2.t0 && _context2.t0.message || _context2.t0));
+            try {
+              var src = Array.isArray(truth) ? truth : [];
+              var pick = [];
+              for (var i = 0; i < Math.min(src.length, 4); i++) {
+                var m2 = src[i];
+                if (!m2 || !m2.from || !m2.to) continue;
+                pick.push({
+                  uid: 'ai_offline_' + Math.random().toString(36).slice(2),
+                  msg: m2,
+                  ie_overrides: {},
+                  from_role: sanitizeRole(m2.from_role || m2.from + '$A', m2, 'from'),
+                  to_role: sanitizeRole(m2.to_role || m2.to + '$A', m2, 'to'),
+                  x: 120 + Math.random() * 280,
+                  y: 120 + Math.random() * 160,
+                  expanded: false,
+                  forceEdit: false
+                });
+              }
+              if (pick.length) {
+                setCanvas(function (prev) { return prev.concat(pick); });
+                if (window.showToast) window.showToast('Offline generated case: ' + pick.length + ' items', 'success');
+              } else {
+                alert('AI generation request error: ' + (_context2.t0 && _context2.t0.message || _context2.t0));
+              }
+            } catch (e) {
+              alert('AI generation request error: ' + (_context2.t0 && _context2.t0.message || _context2.t0));
+            }
           case 24:
             _context2.prev = 24;
             setAiBusy(false);
@@ -1386,17 +1422,27 @@ function App() {
                 "case": caseData
               };
             }
+            if (aiOpenAiCompat) payload = Object.assign({}, payload, { stream: !!aiStream });
             _context4.next = 14;
-            return fetch(url, {
-              method: 'POST',
-              headers: headers,
-              body: JSON.stringify(payload)
-            });
+            return fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
           case 14:
             res = _context4.sent;
-            _context4.next = 17;
+            if (!(aiOpenAiCompat && aiStream && res && res.body)) {
+              _context4.next = 21;
+              break;
+            }
+            content = '';
+            _context4.next = 19;
+            return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; });
+          case 19:
+            try { parsed = JSON.parse(content); } catch (_){ parsed = null; }
+            if (parsed && Array.isArray(parsed.suggestions)) { applyAiSuggestions(parsed.suggestions); if (window.showToast) window.showToast('Applied AI optimization suggestions: ' + parsed.suggestions.length + ' items', 'success'); }
+            _context4.next = 25;
+            break;
+          case 21:
+            _context4.next = 23;
             return res.json();
-          case 17:
+          case 23:
             data = _context4.sent;
             setAiResult(JSON.stringify(data, null, 2));
             parsed = null;
@@ -1419,7 +1465,16 @@ function App() {
           case 24:
             _context4.prev = 24;
             _context4.t0 = _context4["catch"](0);
-            alert('AI analysis request error: ' + (_context4.t0 && _context4.t0.message || _context4.t0));
+            try {
+              var result = runLocalConsistencyCheck();
+              setAiResult(JSON.stringify(result, null, 2));
+              if (result && Array.isArray(result.suggestions)) {
+                applyAiSuggestions(result.suggestions);
+                if (window.showToast) window.showToast('Applied local consistency suggestions: ' + result.suggestions.length + ' items', 'success');
+              }
+            } catch (_) {
+              alert('AI analysis request error: ' + (_context4.t0 && _context4.t0.message || _context4.t0));
+            }
           case 27:
             _context4.prev = 27;
             setAiBusy(false);
