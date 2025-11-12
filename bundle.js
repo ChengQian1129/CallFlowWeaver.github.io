@@ -700,9 +700,51 @@ function App() {
             }
           })["catch"](function () {});
         }
+        if (!updated && (!truth || truth.length === 0) && Array.isArray(window.__truthCache) && window.__truthCache.length) {
+          var arr4 = window.__truthCache;
+          setTruth(arr4);
+          setByProto(groupMode === 'interface' ? groupByInterface(arr4) : groupByProto(arr4));
+          setImportInfo({ ok: arr4.length, err: 0 });
+        }
       } catch (_) {}
     }, 1200);
     return function () { try { clearTimeout(timer); } catch (_) {} };
+  }, [truth, groupMode]);
+
+  React.useEffect(function () {
+    if (truth && truth.length) return;
+    var count = 0;
+    var iv = setInterval(function () {
+      count++;
+      if (truth && truth.length || count > 12) {
+        try { clearInterval(iv); } catch (_) {}
+        return;
+      }
+      try {
+        if (Array.isArray(window.__truthCache) && window.__truthCache.length) {
+          var arr5 = window.__truthCache;
+          setTruth(arr5);
+          setByProto(groupMode === 'interface' ? groupByInterface(arr5) : groupByProto(arr5));
+          setImportInfo({ ok: arr5.length, err: 0 });
+          clearInterval(iv);
+          return;
+        }
+        if (window.truthDb && typeof window.truthDb.getRaw === 'function') {
+          window.truthDb.getRaw().then(function (text) {
+            if (!text) return;
+            var r = parseJSONAny(text);
+            var items = r && r.items || [];
+            if (Array.isArray(items) && items.length) {
+              setTruth(items);
+              setByProto(groupMode === 'interface' ? groupByInterface(items) : groupByProto(items));
+              setImportInfo({ ok: items.length, err: r.errors && r.errors.length || 0 });
+              try { clearInterval(iv); } catch (_) {}
+            }
+          })["catch"](function () {});
+        }
+      } catch (_) {}
+    }, 500);
+    return function () { try { clearInterval(iv); } catch (_) {} };
   }, [truth, groupMode]);
 
   // 持久化设置
