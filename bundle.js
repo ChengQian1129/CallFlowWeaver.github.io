@@ -968,6 +968,12 @@ function App() {
       return String(x).trim();
     }).filter(Boolean);
   }
+  var truthIdsMemo = React.useMemo(function(){
+    try{ var merged = Object.values(byProto || {}).reduce(function(acc, arr){ return acc.concat(arr || []); }, []); return merged.map(function(m){ return String(m.id); }); }catch(_){ return []; }
+  }, [byProto]);
+  var supportedIdsMemo = React.useMemo(function(){ try{ return pickRelevantIds(String(aiPrompt || ''), truthIdsMemo); }catch(_){ return []; } }, [aiPrompt, truthIdsMemo]);
+  function useSupportedIds(){ try{ setIdsText(((supportedIdsMemo||[])).join(' ')); }catch(_){ } }
+  function copySupportedIds(){ try{ var t=((supportedIdsMemo||[])).join(' '); if(navigator && navigator.clipboard) navigator.clipboard.writeText(t); }catch(_){ } }
   function buildCaseFromIds(ids) {
     try {
       if (!Array.isArray(ids) || ids.length === 0) {
@@ -2578,7 +2584,7 @@ function App() {
     onChange: function onChange(e) {
       return setAiPrompt(e.target.value);
     }
-  }), /*#__PURE__*/React.createElement("div", {
+  }), /*#__PURE__*/React.createElement("div", { className: "flex items-center justify-between text-xs text-zinc-300" }, /*#__PURE__*/React.createElement("div", { className: "truncate" }, "Supported IDs hint (", (supportedIdsMemo||[]).length, "):", ' ', (supportedIdsMemo||[]).slice(0,10).join(', ')), /*#__PURE__*/React.createElement("div", { className: "flex items-center gap-2" }, /*#__PURE__*/React.createElement(IconButton, { icon: "plus", title: "Use Supported IDs", onClick: useSupportedIds, disabled: !(supportedIdsMemo||[]).length }), /*#__PURE__*/React.createElement(IconButton, { icon: "copy", title: "Copy Supported IDs", onClick: copySupportedIds, disabled: !(supportedIdsMemo||[]).length }))), /*#__PURE__*/React.createElement("div", {
     className: "flex items-center gap-2"
   }, /*#__PURE__*/React.createElement(IconButton, {
     icon: "generate",

@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import urllib.request
+import os
 
 def read_text(p: Path) -> str:
     return p.read_text(encoding='utf-8', errors='ignore')
@@ -99,8 +100,8 @@ def validate_ids(generated: List[str], allowed: List[str], min_n: int, max_n: in
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument('--endpoint', required=True)
-    ap.add_argument('--model', required=True)
+    ap.add_argument('--endpoint')
+    ap.add_argument('--model')
     ap.add_argument('--dataset', default='non5gc_rel18.final.rich.jsonl')
     ap.add_argument('--prompt', required=True)
     ap.add_argument('--min_ids', type=int, default=4)
@@ -113,7 +114,22 @@ def main():
     ap.add_argument('--api_key', help='API key (use env instead in practice)')
     ap.add_argument('--api_key_env', help='Environment variable name containing API key')
     ap.add_argument('--openai', action='store_true', help='Use OpenAI-compatible /v1/chat/completions endpoint')
+    ap.add_argument('--stream', action='store_true', help='Enable streaming mode in request payload')
     args = ap.parse_args()
+    # Env fallbacks
+    if not args.endpoint:
+        args.endpoint = os.environ.get('LLM_API_BASE')
+    if not args.model:
+        args.model = os.environ.get('LLM_API_MODEL')
+    if args.stream is False:
+        args.stream = os.environ.get('LLM_TRACE_INCLUDE_RAW') in ('1','true','True')
+    preview_chars = int(os.environ.get('LLM_TRACE_PREVIEW_CHARS') or '0')
+    if not args.endpoint or not args.model:
+        print('MISSING_ENDPOINT_OR_MODEL', file=sys.stderr)
+        sys.exit(2)
+    # If endpoint already includes /v1/chat/completions, force openai path mode
+    if '/v1/chat/completions' in args.endpoint:
+        args.openai = True
 
     ds = Path(args.dataset)
     if not ds.exists():
@@ -132,6 +148,8 @@ def main():
         {'role':'user','content':'supported_message_ids: ' + json.dumps(supported)}
     ]
     payload = {'model': args.model, 'messages': messages}
+    if args.stream:
+        payload['stream'] = True
     api_key = None
     if args.api_key_env:
         api_key = os.environ.get(args.api_key_env)
@@ -140,10 +158,32 @@ def main():
     url = normalize_endpoint(args.endpoint, args.openai)
     data = post_json(url, payload, api_key=api_key)
 
-    gen_ids = []
-    content = None
+    gen_ids: List[str] = []
+    content: Optional[str] = None
+    # Support regular JSON or SSE-like streaming payload aggregated into 'raw'
     try:
-        content = data.get('choices', [{}])[0].get('message', {}).get('content')
+        if 'raw' in data and isinstance(data['raw'], str):
+            # Parse SSE: lines like 'data: {...}'
+            sse = data['raw']
+            buf = ''
+            for ln in sse.splitlines():
+                ln = ln.strip()
+                if not ln:
+                    continue
+                if ln.startswith('data:'):
+                    body = ln[5:].strip()
+                    try:
+                        chunk = json.loads(body)
+                        delta = chunk.get('choices', [{}])[0].get('delta') or chunk.get('choices', [{}])[0].get('message')
+                        if isinstance(delta, dict) and isinstance(delta.get('content'), str):
+                            buf += delta['content']
+                    except Exception:
+                        pass
+                elif ln == '[DONE]':
+                    break
+            content = buf
+        else:
+            content = data.get('choices', [{}])[0].get('message', {}).get('content')
         obj = json.loads(content) if content else {}
         if isinstance(obj.get('message_ids'), list):
             gen_ids = [str(x) for x in obj['message_ids']]
@@ -184,6 +224,13 @@ def main():
     except Exception:
         ok_suggestions = False
 
+    # Optional raw preview trimming for logs/debug
+    if preview_chars and isinstance(data, dict):
+        txt = json.dumps(data, ensure_ascii=False)
+        data = {'preview': txt[:preview_chars]}
+    if preview_chars and isinstance(data2, dict):
+        txt2 = json.dumps(data2, ensure_ascii=False)
+        data2 = {'preview': txt2[:preview_chars]}
     report = {'step':'analyze', 'ok':ok_suggestions, 'generated_ids':v['used_ids'], 'generate_raw':data, 'analyze_raw':data2, 'endpoint': args.endpoint, 'model': args.model}
     Path(args.out).write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
     print('ANALYZE_OK' if ok_suggestions else 'ANALYZE_FAIL')
