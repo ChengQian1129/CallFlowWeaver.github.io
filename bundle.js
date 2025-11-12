@@ -785,7 +785,8 @@ function App() {
       var timer = setTimeout(function () {
         if (done || (truth && truth.length)) return;
         try {
-          fetch('./non5gc_rel18.final.rich.jsonl').then(function (r) { return r.text(); }).then(function (t) {
+          var u = './non5gc_rel18.final.rich.jsonl';
+          fetch(u).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (t) {
             if (!t || (truth && truth.length)) return;
             var r = parseJSONAny(t);
             var items = r && r.items || [];
@@ -795,7 +796,20 @@ function App() {
               setImportInfo({ ok: items.length, err: r.errors && r.errors.length || 0 });
               try { localStorage.setItem('5gc_import_text', String(t)); } catch (_) {}
             }
-          })["catch"](function () {});
+          })["catch"](function () {
+            var alt = './non5gc_rel18.final.rich.json';
+            fetch(alt).then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); }).then(function (t) {
+              if (!t || (truth && truth.length)) return;
+              var r = parseJSONAny(t);
+              var items = r && r.items || [];
+              if (Array.isArray(items) && items.length) {
+                setTruth(items);
+                setByProto(groupMode === 'interface' ? groupByInterface(items) : groupByProto(items));
+                setImportInfo({ ok: items.length, err: r.errors && r.errors.length || 0 });
+                try { localStorage.setItem('5gc_import_text', String(t)); } catch (_) {}
+              }
+            })["catch"](function () {});
+          });
         } catch (_) {}
       }, 1800);
       return function () { try { done = true; clearTimeout(timer); } catch (_) {} };
@@ -1580,6 +1594,21 @@ function App() {
       btnGenOpt.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ window.aiAutoOptimize = true; onAiBuildFlow(); }catch(_){ } });
       optChk.addEventListener('change', function(){ try{ window.aiAutoOptimize = !!optChk.checked; }catch(_){ } });
       return function(){ try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } };
+    }catch(_){ }
+  }, [aiBuildOpen]);
+  React.useEffect(function(){
+    try{
+      var b=document && document.body; if(!b) return;
+      var on = !!aiBuildOpen;
+      b.classList.toggle('ai-mode', on);
+      var btn = document.querySelector('.cfw-ai-fab');
+      if(btn){
+        var rect = btn.getBoundingClientRect();
+        var x = Math.max(0, Math.min(100, (rect.left + rect.width/2) / (window.innerWidth||1) * 100));
+        var y = Math.max(0, Math.min(100, (rect.top + rect.height/2) / (window.innerHeight||1) * 100));
+        document.documentElement.style.setProperty('--ai-x1', x+'%');
+        document.documentElement.style.setProperty('--ai-y1', y+'%');
+      }
     }catch(_){ }
   }, [aiBuildOpen]);
 

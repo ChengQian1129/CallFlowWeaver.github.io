@@ -52,6 +52,12 @@
     details[open] > summary.leftsummary { padding: 8px 12px; font-size: 1rem; line-height: 1.25rem; }
     /* Reduce card padding only when group is collapsed (Chrome supports :has) */
     .card:has(details:not([open])) { padding: 8px; }
+
+    :root { --ai-x1:20%; --ai-y1:20%; --ai-x2:80%; --ai-y2:30%; --ai-x3:30%; --ai-y3:80%; }
+    body::before { content:""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; transition: opacity .35s ease; background: radial-gradient(1200px 600px at var(--ai-x1) var(--ai-y1), rgba(59,130,246,0.20), transparent 60%), radial-gradient(1000px 500px at var(--ai-x2) var(--ai-y2), rgba(236,72,153,0.18), transparent 60%), radial-gradient(900px 600px at var(--ai-x3) var(--ai-y3), rgba(34,197,94,0.16), transparent 60%); animation: aiFlow 12s ease-in-out infinite; filter: saturate(1.2) blur(0.5px); }
+    .ai-mode::before { opacity: 1; }
+    @keyframes aiFlow { 0% { transform: translate3d(0,0,0); } 33% { transform: translate3d(8px,-6px,0); } 66% { transform: translate3d(-6px,8px,0); } 100% { transform: translate3d(0,0,0); } }
+    body { position: relative; z-index: 1; }
   </style>
 
 </head>
@@ -173,21 +179,7 @@
               try{
                 var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
                 var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
-                if(!hasCanvas){
-                  var items=[];
-                  for(var i=0;i<Math.min(arr.length,10);i++){
-                    var m=arr[i]; if(!m||!m.from||!m.to) continue;
-                    items.push({ uid:'embedded_'+Date.now()+'_'+i, msg:m, ie_overrides:{},
-                      from_role:(m.from_role||(m.from+'$A')), to_role:(m.to_role||(m.to+'$A')),
-                      x: 140 + i*220, y: 160 + (i%2)*80, expanded:false, forceEdit:false });
-                  }
-                  if(items.length){
-                    var caseData={ caseName:'Imported_Case', caseDesc:'Built from embedded dataset', canvas: items, savedAt: Date.now() };
-                    localStorage.setItem('5gc_current_case', JSON.stringify(caseData));
-                    var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
-                    casesMap['Imported_Case']=caseData; localStorage.setItem('5gc_cases', JSON.stringify(casesMap));
-                  }
-                }
+                /* 不自动创建 Case：严格区分消息与 Case */
               }catch(e){}
             }catch(e){}
           }
@@ -219,29 +211,7 @@
               try{
                 var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
                 var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
-                if(!hasCanvas){
-                  var items=[];
-                  for(var i=0;i<Math.min(arr.length,10);i++){
-                    var m=arr[i];
-                    if(!m||!m.from||!m.to) continue;
-                    items.push({
-                      uid: 'autoload_'+Date.now()+'_'+i,
-                      msg: m,
-                      ie_overrides: {},
-                      from_role: (m.from_role|| (m.from+'$A')),
-                      to_role: (m.to_role|| (m.to+'$A')),
-                      x: 140 + i*220,
-                      y: 160 + (i%2)*80,
-                      expanded: false,
-                      forceEdit: false
-                    });
-                  }
-                  var caseData={ caseName:'Autoload_Case', caseDesc:'Loaded via autoload query', canvas: items, savedAt: Date.now()};
-                  localStorage.setItem('5gc_current_case', JSON.stringify(caseData));
-                  var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
-                  casesMap['Autoload_Case']=caseData;
-                  localStorage.setItem('5gc_cases', JSON.stringify(casesMap));
-                }
+                /* 不自动创建 Case：严格区分消息与 Case */
               }catch(e){}
               try{
                 window.exportMessages = arr.map(function(m,i){
@@ -274,21 +244,7 @@
                 try{
                   var existingCase2 = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
                   var hasCanvas2 = Array.isArray(existingCase2.canvas) && existingCase2.canvas.length>0;
-                  if(!hasCanvas2){
-                    var items2=[];
-                    for(var j=0;j<Math.min(arr.length,10);j++){
-                      var mm=arr[j]; if(!mm||!mm.from||!mm.to) continue;
-                      items2.push({ uid:'fallback_'+Date.now()+'_'+j, msg:mm, ie_overrides:{},
-                        from_role:(mm.from_role||(mm.from+'$A')), to_role:(mm.to_role||(mm.to+'$A')),
-                        x: 140 + j*220, y: 160 + (j%2)*80, expanded:false, forceEdit:false });
-                    }
-                    if(items2.length){
-                      var caseData2={ caseName:'Imported_Case', caseDesc:'Built from fallback dataset', canvas: items2, savedAt: Date.now() };
-                      localStorage.setItem('5gc_current_case', JSON.stringify(caseData2));
-                      var casesMap2 = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
-                      casesMap2['Imported_Case']=caseData2; localStorage.setItem('5gc_cases', JSON.stringify(casesMap2));
-                    }
-                  }
+                  /* 不自动创建 Case：严格区分消息与 Case */
                 }catch(e){}
               }catch(e){}
             }
@@ -365,7 +321,27 @@
         }else{
           var params = new URLSearchParams(location.search||'');
           var src = (params.get('dataset') || params.get('autoload') || './non5gc_rel18.final.rich.jsonl').trim();
-          fetch(src).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }).then(function(t){ ingest(t); }).catch(function(e){ try{ console.error('Dataset autoload failed:', e); }catch(_e){} });
+          if(src === '__synthetic5000'){
+            try{
+              var lines=[];
+              for(var i=0;i<5000;i++){
+                lines.push(JSON.stringify({
+                  id: 'SYNTH.'+i,
+                  message: 'Synthetic Message '+i,
+                  from: 'UE',
+                  to: 'NW'
+                }));
+              }
+              ingest(lines.join('\n'));
+            }catch(_e){}
+          }else{
+            var tryFetch=function(u){ return fetch(u).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }); };
+            tryFetch(src).then(function(t){ ingest(t); }).catch(function(e){
+              var alt = (src === './non5gc_rel18.final.rich.jsonl') ? './non5gc_rel18.final.rich.json' : '';
+              if(alt){ tryFetch(alt).then(function(t){ ingest(t); }).catch(function(_e){ try{ console.error('Dataset autoload failed:', e); }catch(_e){} }); }
+              else{ try{ console.error('Dataset autoload failed:', e); }catch(_e){} }
+            });
+          }
         }
       }catch(e){}
     })();
