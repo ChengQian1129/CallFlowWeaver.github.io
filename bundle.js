@@ -21,10 +21,10 @@ function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
 function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
 // top-level scope (removed IIFE wrapper to avoid parse ambiguity)
 // --- React hooks shortcut ---
-var _React = React,
-  useState = _React.useState,
-  useMemo = _React.useMemo,
-  useRef = _React.useRef;
+  var _React = React,
+    useState = _React.useState,
+    useMemo = _React.useMemo,
+    useRef = _React.useRef;
 
 // --- helpers (no optional chaining / no nullish coalescing for compatibility) ---
 var uid = function uid() {
@@ -557,6 +557,14 @@ function App() {
     _React$useState60 = _slicedToArray(_React$useState59, 2),
     aiStream = _React$useState60[0],
     setAiStream = _React$useState60[1];
+  var _React$useState61 = React.useState(false),
+    _React$useState62 = _slicedToArray(_React$useState61, 2),
+    aiBuildOpen = _React$useState62[0],
+    setAiBuildOpen = _React$useState62[1];
+  var _React$useState63 = React.useState(''),
+    _React$useState64 = _slicedToArray(_React$useState63, 2),
+    aiBuildText = _React$useState64[0],
+    setAiBuildText = _React$useState64[1];
 
   // 从 localStorage 读取设置
   React.useEffect(function () {
@@ -1503,6 +1511,53 @@ function App() {
       if (d.type === 'viewerAI.preview') return window.viewerAI.preview();
     } catch (_) {}
   });
+
+  function onAiBuildFlow() {
+    try {
+      if (!aiApiUrl) { alert('Please configure API Endpoint first'); return; }
+      setAiBusy(true); setAiTask('generate'); setAiResult('');
+      var url = String(aiApiUrl || '').trim();
+      var headers = { 'Content-Type': 'application/json' };
+      if (aiApiKey) headers['Authorization'] = 'Bearer ' + aiApiKey;
+      var base = url.replace(/\/+$/, '');
+      url = /\/v1$/.test(base) ? base + '/chat/completions' : base;
+      var sys = 'You are a 5GC signaling expert. Based on supported message IDs, return ordered message_ids for the requested flow.';
+      var allIds = (Array.isArray(truth)?truth:[]).map(function(m){ return m && m.id; }).filter(Boolean);
+      var msgs = [ { role:'system', content: sys }, { role:'user', content: String(aiBuildText||aiPrompt||'') } ];
+      if (allIds.length) msgs.push({ role:'user', content: 'supported_message_ids: ' + JSON.stringify(allIds) });
+      var payload = { model: String(aiModel||'gemini-2.5-pro'), messages: msgs };
+      if (aiOpenAiCompat) payload = Object.assign({}, payload, { stream: !!aiStream });
+      fetch(url, { method:'POST', headers: headers, body: JSON.stringify(payload) }).then(function(res){
+        if (!(aiOpenAiCompat && aiStream && res && res.body)) return res.json();
+        var content = ''; return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; }).then(function(){ try{ var obj = JSON.parse(content); var ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; if(!ids||!ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } if(ids && ids.length){ buildCaseFromIds(ids); } }catch(_e){} return null; });
+      }).then(function(data){ if(!data) return; try{ setAiResult(JSON.stringify(data,null,2)); var ids=[]; if(data && Array.isArray(data.message_ids)) ids = data.message_ids.map(String); else if(data && data.choices && data.choices[0] && data.choices[0].message && typeof data.choices[0].message.content==='string'){ var content = data.choices[0].message.content; try{ var obj=JSON.parse(content); if(Array.isArray(obj.message_ids)) ids = obj.message_ids.map(String); }catch(_e){} if(!ids || !ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } } if(ids && ids.length){ buildCaseFromIds(ids); } }catch(_e){} }).catch(function(e){ alert('AI generation request error: ' + (e && e.message || e)); }).finally(function(){ setAiBusy(false); setAiTask(''); setAiBuildOpen(false); });
+    } catch (e) { alert('AI generation request error: ' + (e && e.message || e)); }
+  }
+
+  React.useEffect(function(){
+    function onKey(e){ try{ if(e && e.ctrlKey && e.altKey && (e.key||'').toLowerCase()==='b'){ setAiBuildOpen(true); } }catch(_){} }
+    try{ window.addEventListener('keydown', onKey); }catch(_){ }
+    return function(){ try{ window.removeEventListener('keydown', onKey); }catch(_){ } };
+  }, []);
+  React.useEffect(function(){
+    try{
+      if(!aiBuildOpen) return;
+      var overlay=document.createElement('div'); overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2147483607;display:flex;align-items:center;justify-content:center;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
+      var modal=document.createElement('div'); modal.style.cssText='width:600px;max-width:92vw;background:#111827;border:1px solid #27272a;color:#e5e7eb;border-radius:12px;padding:16px;';
+      var title=document.createElement('div'); title.textContent='AI Build Flow'; title.style.cssText='font-weight:600;margin-bottom:8px;';
+      var ta=document.createElement('textarea'); ta.value=String(aiBuildText||''); ta.placeholder='Describe the flow, e.g., UE initiate attach'; ta.style.cssText='width:100%;height:140px;box-sizing:border-box;background:#0b0f19;border:1px solid #3f3f46;color:#e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;';
+      var row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin-top:12px;';
+      var btnGen=document.createElement('button'); btnGen.textContent='Generate'; btnGen.style.cssText='background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;';
+      var btnCancel=document.createElement('button'); btnCancel.textContent='Cancel'; btnCancel.style.cssText='background:#1f2937;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;';
+      row.appendChild(btnCancel); row.appendChild(btnGen);
+      modal.appendChild(title); modal.appendChild(ta); modal.appendChild(row); overlay.appendChild(modal);
+      document.body.appendChild(overlay);
+      ta.addEventListener('input', function(){ try{ setAiBuildText(ta.value); }catch(_){ } });
+      btnCancel.addEventListener('click', function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(overlay); }catch(_){ } });
+      btnGen.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ onAiBuildFlow(); }catch(_){ } });
+      return function(){ try{ document.body.removeChild(overlay); }catch(_){ } };
+    }catch(_){ }
+  }, [aiBuildOpen]);
   var moveFromTo = function moveFromTo(from, to) {
     setCanvas(function (prev) {
       if (from < 0 || from >= prev.length) return prev;
