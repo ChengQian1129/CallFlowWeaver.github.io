@@ -175,7 +175,7 @@
                 var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
                 if(!hasCanvas){
                   var items=[];
-                  for(var i=0;i<Math.min(arr.length,4);i++){
+                  for(var i=0;i<Math.min(arr.length,10);i++){
                     var m=arr[i]; if(!m||!m.from||!m.to) continue;
                     items.push({ uid:'embedded_'+Date.now()+'_'+i, msg:m, ie_overrides:{},
                       from_role:(m.from_role||(m.from+'$A')), to_role:(m.to_role||(m.to+'$A')),
@@ -221,7 +221,7 @@
                 var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
                 if(!hasCanvas){
                   var items=[];
-                  for(var i=0;i<Math.min(arr.length,4);i++){
+                  for(var i=0;i<Math.min(arr.length,10);i++){
                     var m=arr[i];
                     if(!m||!m.from||!m.to) continue;
                     items.push({
@@ -276,7 +276,7 @@
                   var hasCanvas2 = Array.isArray(existingCase2.canvas) && existingCase2.canvas.length>0;
                   if(!hasCanvas2){
                     var items2=[];
-                    for(var j=0;j<Math.min(arr.length,4);j++){
+                    for(var j=0;j<Math.min(arr.length,10);j++){
                       var mm=arr[j]; if(!mm||!mm.from||!mm.to) continue;
                       items2.push({ uid:'fallback_'+Date.now()+'_'+j, msg:mm, ie_overrides:{},
                         from_role:(mm.from_role||(mm.from+'$A')), to_role:(mm.to_role||(mm.to+'$A')),
@@ -342,7 +342,7 @@
             var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
             var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
             if(!hasCanvas){
-              var items=[]; for(var k=0;k<Math.min(arr.length,4);k++){ var m3=arr[k]; if(!m3||!m3.from||!m3.to) continue;
+              var items=[]; for(var k=0;k<Math.min(arr.length,10);k++){ var m3=arr[k]; if(!m3||!m3.from||!m3.to) continue;
                 items.push({ uid:'default_'+Date.now()+'_'+k, msg:m3, ie_overrides:{}, from_role:(m3.from_role||(m3.from+'$A')), to_role:(m3.to_role||(m3.to+'$A')),
                   x: 140 + k*220, y: 160 + (k%2)*80, expanded:false, forceEdit:false }); }
               if(items.length){ var caseData={ caseName:'Imported_Case', caseDesc:'Built from default dataset', canvas: items, savedAt: Date.now() };
