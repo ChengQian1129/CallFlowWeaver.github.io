@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>CallFlowWeaver - Adjustable Layout (Zoom/Pan Supported)</title>
+  <style>
+    /* ===== Base Layout ===== */
+    html,body{margin:0;padding:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}
+    #container{display:flex;height:100vh;overflow:hidden;}
+
+    /* ===== Left Diagram Container =====
+       Fix: remove previous cursor:grab to avoid a “hand” pointer on the left blank area */
+    #diagram-container{flex:1;position:relative;overflow:hidden;}
+
+    #header-names{position:absolute;top:0;left:0;right:0;height:50px;background:#fff;border-bottom:1px solid #eee;overflow:hidden;pointer-events:none;}
+    #header-names-inner{position:absolute;top:0;left:0;height:100%;}
+    #header-names-inner .node-name{position:absolute;top:50%;transform:translate(-50%,-50%);font-size:14px;color:#333;}
+    #diagram-body{position:absolute;top:50px;bottom:0;left:0;right:0;overflow:auto;}
+    #diagram{display:block;}
+
+    /* ===== Vertical Divider ===== */
+    #vertical-divider{width:5px;background:#ddd;cursor:col-resize;user-select:none;}
+
+    /* ===== Right Panel ===== */
+    #viewer-wrapper{width:400px;display:flex;flex-direction:column;overflow:hidden;}
+    #viewer-header{flex:none;padding:10px 12px;background:#f5f5f5;border-bottom:1px solid #ccc;font-weight:bold;}
+
+    /* ===== Right Panel Split (parent container) ===== */
+    #right-detail{position:relative;flex:1;min-height:0;}
+
+    /* ===== Right Panel Top/Bottom Content Areas ===== */
+    #json-viewer {
+      position:absolute;left:0;right:0;
+      padding:10px;font-size:14px;line-height:1.4;
+      overflow-y:auto;box-sizing:border-box;
+    }
+    #comment-viewer {
+      position:absolute;left:0;right:0;
+      padding:10px;font-size:14px;line-height:1.4;
+      overflow-y:auto;box-sizing:border-box;
+    }
+    #json-viewer details{margin-left:12px;margin-bottom:4px;}
+    #json-viewer summary{cursor:pointer;}
+
+    /* ===== Horizontal Divider ===== */
+    #horizontal-divider{
+      position:absolute;left:0;right:0;height:5px;background:#ddd;
+      cursor:row-resize;user-select:none;
+    }
+
+    /* ===== Message Text Labels ===== */
+    .message-label{cursor:default;}
+    .message-label:hover{fill:#007ACC;}
+
+    #comment-content {
+      max-width: 800px;
+      margin: 0 auto;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    #comment-content code {
+      font-family: Consolas,"Courier New",monospace;
+      background-color: #f5f5f5;
+      padding: 2px 4px;
+      border-radius: 3px;
+    }
+    #comment-content pre code {
+      background-color: transparent;
+      padding: 0;
+    }
+    #comment-content pre {
+      background-color: #f5f5f5;
+      padding: 10px;
+      border-radius: 3px;
+      overflow-x: auto;
+    }
+    #comment-content ul, #comment-content ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+    #comment-content li {
+      margin: 0.2em 0;
+    }
+    #comment-viewer::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    #comment-viewer::-webkit-scrollbar-thumb {
+      background-color: rgba(0,0,0,0.3);
+      border-radius: 4px;
+    }
+    #comment-viewer::-webkit-scrollbar-track {
+      background-color: #f5f5f5;
+    }
+    .doc-kv table,.doc-http table,.doc-struct table,.doc-iedict table{width:100%;border-collapse:collapse;margin:8px 0}
+    .doc-kv td,.doc-http td,.doc-struct td,.doc-iedict td{border:1px solid #ddd;padding:6px 8px;font-size:13px}
+    .doc-spec,.doc-summary,.doc-steps,.doc-comment,.doc-ie,.doc-iedict,.doc-struct,.doc-meta{margin:8px 0}
+    .doc-sep{border:none;border-top:1px solid #e5e7eb;margin:12px 0}
+  </style>
+
+  <style id="addon-style">
+    .message-label.selected{fill:#ff5722;font-weight:bold;}
+  </style>
+</head>
+<body>
+
+
+  <div id="container">
+    <!-- Left signal-sequence diagram -->
+    <div id="diagram-container">
+      <div id="header-names"><div id="header-names-inner"></div></div>
+      <div id="diagram-body"><svg id="diagram"></svg></div>
+    </div>
+
+    <!-- Vertical divider -->
+    <div id="vertical-divider"></div>
+
+    <!-- Right message details -->
+    <div id="viewer-wrapper">
+      <div id="viewer-header">Message Details</div>
+      <div id="right-detail">
+        <div id="json-viewer">Click a message on the left to view details</div>
+        <div id="horizontal-divider"></div>
+        <div id="comment-viewer">
+           <div id="comment-content">Click a message on the left to view notes</div>
+         </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/16.1.1/lib/marked.umd.min.js"></script>
+  <script>
+      document.addEventListener('DOMContentLoaded', () => {
+      function md(text){
+        if(!text) return '';
+        const escape = (s)=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const lines = String(text).split(/\r?\n/);
+        const out = [];
+        let inUL=false, inOL=false, inCODE=false, codeLang='', codeBuf=[];
+        const flushLists = ()=>{ if(inUL){ out.push('</ul>'); inUL=false; } if(inOL){ out.push('</ol>'); inOL=false; } };
+        const flushCode = ()=>{ if(inCODE){ out.push('<pre><code'+(codeLang?(' class="language-'+escape(codeLang)+'"'):'')+'>'+escape(codeBuf.join('\n'))+'</code></pre>'); inCODE=false; codeLang=''; codeBuf=[]; } };
+        for(const raw of lines){
+          const fence = /^\s*```(\w+)?\s*$/.exec(raw);
+          if(fence){
+            if(inCODE){ flushCode(); } else { flushLists(); inCODE=true; codeLang=fence[1]||''; }
+            continue;
+          }
+          if(inCODE){ codeBuf.push(raw); continue; }
+          const mUL = /^\s*[-*]\s+(.+)$/.exec(raw);
+          const mOL = /^\s*\d+\.\s+(.+)$/.exec(raw);
+          if(mUL){
+            if(!inUL){ flushLists(); out.push('<ul>'); inUL=true; }
+            out.push('<li>'+escape(mUL[1])+'</li>');
+            continue;
+          }
+          if(mOL){
+            if(!inOL){ flushLists(); out.push('<ol>'); inOL=true; }
+            out.push('<li>'+escape(mOL[1])+'</li>');
+            continue;
+          }
+          let s = escape(raw);
+          s=s.replace(/^######\s+(.*)$/,'<h6>$1</h6>')
+             .replace(/^#####\s+(.*)$/,'<h5>$1</h5>')
+             .replace(/^####\s+(.*)$/,'<h4>$1</h4>')
+             .replace(/^###\s+(.*)$/,'<h3>$1</h3>')
+             .replace(/^##\s+(.*)$/,'<h2>$1</h2>')
+             .replace(/^#\s+(.*)$/,'<h1>$1</h1>')
+             .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+             .replace(/\*(.*?)\*/g,'<em>$1</em>')
+             .replace(/`([^`]+)`/g,'<code>$1</code>');
+          if(s.trim()===''){ flushLists(); continue; }
+          flushLists();
+          out.push('<p>'+s+'</p>');
+        }
+        flushCode();
+        flushLists();
+        return out.join('');
+      }
+
+      /* ====== Data ====== */
+      const __INCOMING = window.__FLOW__ || {};
+const nodes = Array.isArray(__INCOMING.nodes) ? __INCOMING.nodes : [];
+const messages = Array.isArray(__INCOMING.messages) ? __INCOMING.messages : [];
+if(!nodes.length || !messages.length){
+  document.body.innerHTML = '<div style="padding:16px;font-family:system-ui, -apple-system, Segoe UI, Roboto, sans-serif">No flow data passed. Use <b>StyleA Preview</b> from the builder.</div>';
+  return;
+}
+/* begin FLOW-driven render */
+[
+          {from: "UE", to: "gNB", label: "1  RRCConnectionRequest", info: {
+              header: {msg: "RRCConnectionRequest", protocol: "RRC"},
+              payload: {
+                  "ueIdentity [Mandatory]": {randomValue: "0xABCDEF"},
+                  "establishmentCause [Mandatory]": "mo-Signalling"
+              }
+          }, comment: "UE initiates RRC connection establishment by sending an RRC Connection Request with a random UE identity (for contention resolution) and cause mo-Signalling. \n- **ueIdentity** [Mandatory]: Initial UE identity used for this connection. It can be an S-TMSI (if the UE has a valid previous ID) or a random value. Here the UE sends a random value since it’s the first attach or no valid S-TMSI is available:contentReference[oaicite:0]{index=0}.\n- **establishmentCause** [Mandatory]: Indicates the reason for establishing the RRC connection. “mo-Signalling” means the UE initiated the connection for mobile-originated signalling (i.e. to send NAS signaling for registration):contentReference[oaicite:1]{index=1}."
+          },
+          {from: "gNB", to: "UE", label: "2  RRCSetup", info: {
+              header: {msg: "RRCSetup", protocol: "RRC"},
+              payload: {
+                  "rrcTransactionIdentifier [Mandatory]": 0,
+                  "radioBearerConfig [Mandatory]": {
+                      "srb_ToAddModList [Optional]": [
+                          {"srb_Identity [Mandatory]": 1}
+                      ]
+                  },
+                  "masterCellGroup [Mandatory]": {
+                      "cellGroupId [Mandatory]": 0,
+                      "rlc_BearerToAddModList [Optional]": [],
+                      "mac_CellGroupConfig [Optional]": {},
+                      "physicalCellGroupConfig [Optional]": {}
+                  }
+              }
+          }, comment: "gNB responds with RRC Setup, configuring SRB1 for signaling and initial radio parameters (Master Cell Group configuration). \n- **rrcTransactionIdentifier** [Mandatory]: Identifier for this RRC transaction (0 for the initial transaction).\n- **radioBearerConfig** [Mandatory]: Configuration of radio bearers dedicated to this connection (corresponds to the radioResourceConfigDedicated in RRC Setup). This includes the setup of SRB1 for signaling:contentReference[oaicite:2]{index=2}.\n  - **srb_ToAddModList** [Optional]: List of Signaling Radio Bearers to add or modify. Present here to set up SRB1 (the primary signaling bearer):contentReference[oaicite:3]{index=3}.\n    - **srb_Identity** [Mandatory]: The identifier of the SRB being configured (value 1 for SRB1).\n- **masterCellGroup** [Mandatory]: Configuration of the Master Cell Group (the primary cell group for NR). Contains MAC and PHY layer settings for the UE’s connection.\n  - **cellGroupId** [Mandatory]: Identifier of the cell group (0 for the primary cell group).\n  - **rlc_BearerToAddModList** [Optional]: List of RLC bearers to add or modify. Omitted or empty if no additional RLC bearers are configured (empty here, as no DRB is configured in RRC Setup).\n  - **mac_CellGroupConfig** [Optional]: MAC layer configuration for the cell group. An empty object here indicates default or no special MAC configuration is provided (using spec defaults).\n  - **physicalCellGroupConfig** [Optional]: Physical layer configuration for the cell group. An empty object means default PHY configuration is assumed."
+          },
+          {from: "UE", to: "gNB", label: "3  RRCSetupComplete", info: {
+              header: {msg: "RRCSetupComplete", protocol: "RRC"},
+              payload: {
+                  "rrcTransactionIdentifier [Mandatory]": 0,
+                  "selectedPLMN_Identity [Mandatory]": "001/01",
+                  "dedicatedNAS_Message [Optional]": {
+                      "messageType": "RegistrationRequest",
+                      "registrationType": "Initial Registration",
+                      "nasKeySetIdentifier": {tsc: "native", value: 0},
+                      "fiveGMMCapability": "0xE0",
+                      "ueSecurityCapability": {
+                          nrEncryptionAlgorithms: ["NEA0", "NEA1", "NEA2"],
+                          nrIntegrityAlgorithms: ["NIA1", "NIA2", "NIA3"],
+                          eutraEncryptionAlgorithms: ["EEA0", "EEA1", "EEA2"],
+                          eutraIntegrityAlgorithms: ["EIA1", "EIA2"]
+                      },
+                      "fiveGSMobileIdentity": {
+                          type: "5G-GUTI",
+                          plmnId: "001/01",
+                          amfRegionId: 1,
+                          amfSetId: 1,
+                          amfPointer: 1,
+                          tmsi: "0xABCDEF12"
+                      },
+                      "requestedNSSAI": [{sst: 1, sd: "010203"}]
+                  }
+              }
+          }, comment: "UE confirms RRC setup and includes the NAS Registration Request (with initial registration type, old GUTI, capabilities, etc.). \n- **rrcTransactionIdentifier** [Mandatory]: Echoes the transaction identifier from the RRC Setup (0), indicating this message completes that transaction.\n- **selectedPLMN_Identity** [Mandatory]: Index of the PLMN that the UE has selected from the broadcast list (here ‘1’ corresponds to PLMN 001/01). This field is used when multiple PLMNs are available in the cell:contentReference[oaicite:4]{index=4}.\n- **dedicatedNAS_Message** [Optional]: Contains a NAS message to be delivered to the core network. Here it carries the UE’s **Registration Request** for 5G NAS.\n  - **messageType** [Mandatory]: *Registration Request* – the NAS message by which the UE requests to register with the network.\n  - **registrationType** [Mandatory]: Indicates the type of registration. *Initial Registration* is used for the first attach or when no valid 5G core context exists:contentReference[oaicite:5]{index=5}.\n  - **nasKeySetIdentifier** [Mandatory]: An identifier for the UE’s NAS security context. It includes a *Type of Security Context* (TSC, here “native”) and a key set identifier value (here 0) to indicate the currently used NAS key set:contentReference[oaicite:6]{index=6}.\n  - **fiveGMMCapability** [Optional]: The UE’s 5G MM capability information (0xE0). This IE contains capability bits (e.g. for periodic DRX, Positioning, etc.).\n  - **ueSecurityCapability** [Mandatory]: The set of security algorithms supported by the UE for NAS signaling and ciphering. It lists supported NR encryption (NEA) and integrity (NIA) algorithms, and also E-UTRA algorithms for interworking:contentReference[oaicite:8]{index=8}. This allows the network to choose mutually supported algorithms.\n  - **fiveGSMobileIdentity** [Mandatory]: The UE’s identity for 5G core network registration. Here it is a *5G-GUTI* (Globally Unique Temporary Identifier) from a previous registration, which includes the PLMN ID and AMF identifiers and the UE’s TMSI. Providing the old GUTI allows the network to retrieve the UE’s context if it exists:contentReference[oaicite:9]{index=9}.\n  - **requestedNSSAI** [Optional]: The Network Slice Selection Assistance Information the UE requests. This is the list of slice identifiers (S-NSSAIs) the UE wants service from. Here the UE requests slice with SST 1 and SD “010203”:contentReference[oaicite:10]{index=10}."
+          },
+          {from: "gNB", to: "AMF", label: "4  InitialUEMessage", info: {
+              header: {msg: "InitialUEMessage", protocol: "NGAP"},
+              payload: {
+                  "ranUeNgapId [Mandatory]": 1,
+                  "nasPdu [Mandatory]": {
+                      "messageType": "RegistrationRequest",
+                      "registrationType": "Initial Registration",
+                      "nasKeySetIdentifier": {tsc: "native", value: 0},
+                      "fiveGMMCapability": "0xE0",
+                      "ueSecurityCapability": {
+                          nrEncryptionAlgorithms: ["NEA0", "NEA1", "NEA2"],
+                          nrIntegrityAlgorithms: ["NIA1", "NIA2", "NIA3"],
+                          eutraEncryptionAlgorithms: ["EEA0", "EEA1", "EEA2"],
+                          eutraIntegrityAlgorithms: ["EIA1", "EIA2"]
+                      },
+                      "fiveGSMobileIdentity": {
+                          type: "5G-GUTI",
+                          plmnId: "001/01",
+                          amfRegionId: 1,
+                          amfSetId: 1,
+                          amfPointer: 1,
+                          tmsi: "0xABCDEF12"
+                      },
+                      "requestedNSSAI": [{sst: 1, sd: "010203"}]
+                  },
+                  "userLocationInformation [Mandatory]": {
+                      tai: {plmnId: "001/01", tac: "000A"}
+                  },
+                  "ueContextRequest [Optional]": "requested",
+                  "rrcEstablishmentCause [Mandatory]": "mo-Signalling",
+                  "fivegSTmsi [Optional]": "0xABCDEF12",
+                  "amfSetId [Optional]": 1
+              }
+          }, comment: "gNB forwards the UE's Registration Request to the AMF in an Initial UE Message, including the RAN UE NGAP ID, user location (TAI), the 5G-S-TMSI from the GUTI, and indicating that a UE context is requested. \n- **ranUeNgapId** [Mandatory]: The UE’s RAN-assigned ID for NGAP (gNB UE NGAP ID). This identifier (1) was allocated by the gNB to represent the UE over the NG interface, and the AMF will use it to refer to the UE’s context:contentReference[oaicite:11]{index=11}.\n- **nasPdu** [Mandatory]: The NAS PDU carried transparently to the AMF – here the Registration Request message from the UE.\n  - **messageType** [Mandatory]: *Registration Request* – same NAS message type as described above.\n  - **registrationType** [Mandatory]: *Initial Registration*, indicating a full attach to the 5G core:contentReference[oaicite:12]{index=12}.\n  - **nasKeySetIdentifier** [Mandatory]: NAS security context identifier (TSC “native”, value 0) as provided by the UE:contentReference[oaicite:13]{index=13}.\n  - **fiveGMMCapability** [Optional]: UE’s 5G mobility management capability information (0xE0), provided only if the UE has additional capabilities to convey:contentReference[oaicite:14]{index=14}.\n  - **ueSecurityCapability** [Mandatory]: UE-supported NAS encryption and integrity algorithms (same values as in RRC Setup Complete):contentReference[oaicite:15]{index=15}.\n  - **fiveGSMobileIdentity** [Mandatory]: UE’s identity for registration, here the old 5G-GUTI (with PLMN 001/01 and AMF IDs) to help the AMF retrieve any stored context:contentReference[oaicite:16]{index=16}.\n  - **requestedNSSAI** [Optional]: UE’s requested network slice(s) (SST 1, SD 010203) for service:contentReference[oaicite:17]{index=17}.\n- **userLocationInformation** [Mandatory]: The UE’s location info, specifically the Tracking Area Identity (TAI). Here it indicates PLMN 001/01 and TAC 0x000A, identifying the cell’s tracking area:contentReference[oaicite:18]{index=18}.\n- **ueContextRequest** [Optional]: Indicates that the gNB requests the AMF to set up a UE context (i.e., the gNB is asking the AMF to initiate Initial Context Setup for this UE):contentReference[oaicite:19]{index=19}.\n- **rrcEstablishmentCause** [Mandatory]: The cause for RRC connection establishment as passed to the AMF. “mo-Signalling” informs the AMF that the UE’s RRC connection was initiated for signaling purposes (registration):contentReference[oaicite:20]{index=20}.\n- **fivegSTmsi** [Optional]: The 5G-S-TMSI (short form of the UE’s GUTI) as provided by the UE. If the UE’s Registration Request included a GUTI, the gNB extracts the 5G-S-TMSI and includes it so the AMF can recognize the UE (e.g., for context retrieval):contentReference[oaicite:21]{index=21}.\n- **amfSetId** [Optional]: The AMF Set Identifier associated with the UE’s GUTI, helping route the message to the correct AMF set or pool (included if a GUTI was present):contentReference[oaicite:22]{index=22}."
+          },
+          {from: "AMF", to: "gNB", label: "5  DownlinkNASTransport (IdentityRequest)", info: {
+              header: {msg: "DownlinkNASTransport", protocol: "NGAP"},
+              payload: {
+                  "nasPdu [Mandatory]": {
+                      messageType: "IdentityRequest",
+                      identityType: "SUCI"
+                  }
+              }
+          }, comment: "AMF initiates the identity procedure, asking the UE to provide its SUCI (Subscription Concealed Identifier). \n- **nasPdu** [Mandatory]: Contains the NAS *Identity Request* message sent by the AMF.\n  - **messageType** [Mandatory]: *Identity Request*, indicating a NAS request for the UE’s identity.\n  - **identityType** [Mandatory]: Specifies which identity is requested. Here it is *SUCI*, meaning the AMF is asking for the UE’s Subscription Concealed Identifier (the protected form of the SUPI)."
+          },
+          {from: "gNB", to: "UE", label: "6  DLInformationTransfer (IdentityRequest)", info: {
+              header: {msg: "DLInformationTransfer", protocol: "RRC"},
+              payload: {
+                  "dedicatedNAS_Message [Optional]": {
+                      messageType: "IdentityRequest",
+                      identityType: "SUCI"
+                  }
+              }
+          }, comment: "gNB delivers the Identity Request NAS message to the UE. \n- **dedicatedNAS_Message** [Optional]: The NAS Identity Request conveyed in an RRC message to the UE.\n  - **messageType** [Mandatory]: *Identity Request* (NAS message as above).\n  - **identityType** [Mandatory]: *SUCI*, indicating the UE should respond with its SUCI (encrypted subscriber identity)."
+          },
+          {from: "UE", to: "gNB", label: "7  ULInformationTransfer (IdentityResponse)", info: {
+              header: {msg: "ULInformationTransfer", protocol: "RRC"},
+              payload: {
+                  "dedicatedNAS_Message [Optional]": {
+                      messageType: "IdentityResponse",
+                      fiveGSMobileIdentity: {type: "SUCI", value: "suci-0-001-01-XXXXXXXXXXXXXXXX"}
+                  }
+              }
+          }, comment: "UE responds with an Identity Response containing its SUCI (encrypted SUPI). \n- **dedicatedNAS_Message** [Optional]: The NAS *Identity Response* sent by the UE, carried via RRC.\n  - **messageType** [Mandatory]: *Identity Response*.\n  - **fiveGSMobileIdentity** [Mandatory]: The identity data provided by the UE. Here it is of type *SUCI*, including the SUCI string (concealed SUPI). The SUCI is the UE’s subscriber identity encrypted with the home network’s public key, so that the UE’s IMSI is not sent in cleartext."
+          },
+          {from: "gNB", to: "AMF", label: "8  UplinkNASTransport (IdentityResponse)", info: {
+              header: {msg: "UplinkNASTransport", protocol: "NGAP"},
+              payload: {
+                  "nasPdu [Mandatory]": {
+                      messageType: "IdentityResponse",
+                      fiveGSMobileIdentity: {type: "SUCI", value: "suci-0-001-01-XXXXXXXXXXXXXXXX"}
+                  }
+              }
+          }, comment: "gNB forwards the Identity Response (with SUCI) to the AMF. \n- **nasPdu** [Mandatory]: Contains the NAS *Identity Response* message from the UE.\n  - **messageType** [Mandatory]: *Identity Response*.\n  - **fiveGSMobileIdentity** [Mandatory]: The identity provided by the UE – in this case, the SUCI (encrypted SUPI), which the AMF will use to derive the actual subscriber identity."
+          },
+          {from: "AMF", to: "NRF", label: "9  Nnrf_NFDiscovery (AUSF)", info: {
+              http: {method: "GET", uri: "/nnrf-nfm/v1/nf-instances?targetNfType=AUSF&requesterNfType=AMF&serviceNames=nausf-auth"}
+          }, comment: "AMF uses NRF to discover a suitable AUSF for authentication. \n- **method**: GET (NF discovery query).\n- **uri**: Contains query parameters for NF discovery – **targetNfType=AUSF** (the AMF is looking for an AUSF NF instance) and **requesterNfType=AMF** (identifying itself for filtering). The AMF also specifies **serviceNames=nausf-auth** to find an AUSF that provides the authentication service."
+          },
+          {from: "NRF", to: "AMF", label: "10  Nnrf_NFDiscovery Response", info: {
+              status: 200,
+              body: {
+                  nfInstances: [{
+                      nfType: "AUSF",
+                      nfInstanceId: "ausf1",
+                      endpoint: "https://ausf.example.com/nausf-auth/v1"
+                  }]
+              }
+          }, comment: "NRF returns the AUSF's NF profile (API endpoint) to the AMF. \n- **nfInstances** [Mandatory]: List of NF instances matching the query. Here a single AUSF instance is returned.\n  - **nfType** [Mandatory]: Type of the NF (AUSF).\n  - **nfInstanceId** [Mandatory]: Identifier of the discovered AUSF instance (e.g., “ausf1”).\n  - **endpoint** [Mandatory]: The base URL of the AUSF’s service API (for the UE authentication service)."
+          },
+          {from: "AMF", to: "AUSF", label: "11  Nausf_UEAuthentication Request", info: {
+              http: {method: "POST", uri: "/nausf-auth/v1/ue-authentications"},
+              body: {suci: "suci-0-001-01-...", servingNetworkName: "5G:mnc001.mcc001.3gppnetwork.org"}
+          }, comment: "AMF requests UE authentication vectors and algorithm information from the AUSF. \n- **method**: POST (initiates an authentication procedure at the AUSF).\n- **uri**: */ue-authentications* endpoint of the AUSF’s service.\n- **body**: \n  - **suci** [Mandatory]: The UE’s Subscription Concealed Identifier (the UE’s encrypted SUPI) that will be used for generating authentication vectors.\n  - **servingNetworkName** [Mandatory]: The identifier of the serving network (PLMN) – here `5G:mnc001.mcc001.3gppnetwork.org` – used by the AUSF/UDM to derive authentication data specific to that network."
+          },
+          {from: "AUSF", to: "UDM", label: "12  Nudm_Authentication_Get Request", info: {
+              http: {method: "POST", uri: "/nudm-ueau/v1/{supi}/security-information/generate-auth-data"},
+              body: {supi: "imsi-001010000000001", authType: "5G-AKA"}
+          }, comment: "AUSF requests an authentication vector from the UDM. \n- **supi** [Mandatory]: The subscriber’s permanent identity (IMSI) for which authentication data is being requested. (The AUSF has derived this from the SUCI.)\n- **authType** [Mandatory]: The authentication method to use – here *5G-AKA*, indicating that 5G AKA authentication vectors are needed."
+          },
+          {from: "UDM", to: "UDR", label: "13  Nudr_DM_Query (AuthData)", info: {
+              http: {method: "POST", uri: "/nudr-dr/v1/subscription-data/{supi}/authentication-data"},
+              body: {supi: "imsi-001010000000001", servingNetworkName: "001-01"}
+          }, comment: "UDM retrieves the subscriber's authentication data from the UDR. \n- **supi** [Mandatory]: The subscriber’s unique ID (IMSI) for which auth data is requested.\n- **servingNetworkName** [Mandatory]: The serving network’s identifier (MCC/MNC in this query – 001/01) to fetch network-specific authentication info."
+          },
+          {from: "UDR", to: "UDM", label: "14  Nudr_DM_Query Response", info: {
+              status: 200,
+              body: {authenticationVector: {rand: "0x1234567890ABCDEF...", hxresStar: "HXRES*", autn: "AUTN", k: "K"}}
+          }, comment: "UDR returns the authentication vector (RAND, XRES*, AUTN, K etc) to the UDM. \n- **authenticationVector** [Mandatory]: The components of the authentication vector retrieved for the subscriber:\n  - **rand** [Mandatory]: A 128-bit Random challenge generated for 5G-AKA.\n  - **hxresStar** [Mandatory]: The hashed expected response (XRES*) for the challenge (used by the AUSF to verify the UE’s response).\n  - **autn** [Mandatory]: The authentication token for the UE (allows the UE to verify the network and derive the response).\n  - **k** [Mandatory]: The subscriber’s master key (K) or key material needed for deriving session keys. (This is the secret from the UDR used by the UDM’s auth function to compute K_SEAF and XRES*.)"
+          },
+          {from: "UDM", to: "AUSF", label: "15  Nudm_Authentication_Get Response", info: {
+              status: 200,
+              body: {authVector: {rand: "0x1234567890ABCDEF...", autn: "AUTN", xresStar: "XRES*", kseaf: "K_SEAF"}}
+          }, comment: "UDM returns the authentication vector to the AUSF. \n- **authVector** [Mandatory]: The authentication data for the UE:\n  - **rand**: Random challenge (same RAND as sent in the request).\n  - **autn**: Authentication token for the UE.\n  - **xresStar**: The expected response XRES* (unhashed) for the challenge, to be used by AUSF for verification.\n  - **kseaf**: The key K_SEAF derived from the master key, which will be used as the anchor key for deriving session keys between UE and AMF."
+          },
+          {from: "AUSF", to: "AMF", label: "16  Nausf_UEAuthentication Response", info: {
+              status: 200,
+              body: {rand: "0x1234567890ABCDEF...", autn: "AUTN", hxresStar: "HXRES*", kseaf: "K_SEAF"}
+          }, comment: "Once the UE is authenticated, AUSF provides the challenge (RAND, AUTN) and key material (HXRES*, K_SEAF) to the AMF. \n- **rand** [Mandatory]: The random challenge that was sent to the UE.\n- **autn** [Mandatory]: The authentication token for the UE corresponding to that RAND.\n- **hxresStar** [Mandatory]: The hashed expected response that the AUSF will use to compare with the UE’s actual response (RES*).\n- **kseaf** [Mandatory]: The anchor key (K_SEAF) derived for this UE, which the AMF will use to derive further keys (e.g., K_AMF) for NAS security."
+          },
+          {from: "AMF", to: "gNB", label: "17  DownlinkNASTransport (AuthenticationRequest)", info: {
+              header: {msg: "DownlinkNASTransport", protocol: "NGAP"},
+              payload: {
+                  "nasPdu [Mandatory]": {
+                      messageType: "AuthenticationRequest",
+                      rand: "0x1234567890ABCDEF1234567890ABCDEF",
+                      autn: "0xABCDEF1234567890ABCDEF1234567890"
+                  }
+              }
+          }, comment: "AMF sends a NAS Authentication Request to initiate authentication (includes RAND and AUTN). \n- **nasPdu** [Mandatory]: NAS *Authentication Request* message sent to the UE (encapsulated over NGAP).\n  - **messageType** [Mandatory]: *Authentication Request*.\n  - **rand** [Mandatory]: The random challenge generated for 5G-AKA (here shown as a 128-bit value) that the UE must use to compute its response.\n  - **autn** [Mandatory]: The authentication token corresponding to that RAND, which allows the UE to verify the network’s authenticity and derive the correct response."
+          },
+          {from: "gNB", to: "UE", label: "18  DLInformationTransfer (AuthenticationRequest)", info: {
+              header: {msg: "DLInformationTransfer", protocol: "RRC"},
+              payload: {
+                  "dedicatedNAS_Message [Optional]": {
+                      messageType: "AuthenticationRequest",
+                      rand: "0x1234567890ABCDEF1234567890ABCDEF",
+                      autn: "0xABCDEF1234567890ABCDEF1234567890"
+                  }
+              }
+          }, comment: "gNB delivers the Authentication Request (RAND, AUTN challenge) to the UE. \n- **dedicatedNAS_Message** [Optional]: The NAS Authentication Request forwarded to the UE over RRC.\n  - **messageType** [Mandatory]: *Authentication Request*.\n  - **rand** [Mandatory]: Random challenge from the core network for AKA (same value as provided by AMF).\n  - **autn** [Mandatory]: Authentication token for the challenge (as provided by AMF)."
+          },
+          {from: "UE", to: "gNB", label: "19  ULInformationTransfer (AuthenticationResponse)", info: {
+              header: {msg: "ULInformationTransfer", protocol: "RRC"},
+              payload: {
+                  "dedicatedNAS_Message [Optional]": {
+                      messageType: "AuthenticationResponse",
+                      resStar: "0xXXXXXXXXXXXXXXXX"
+                  }
+              }
+          }, comment: "UE calculates the authentication response and sends an Authentication Response (containing RES*). \n- **dedicatedNAS_Message** [Optional]: The NAS *Authentication Response* generated by the UE, sent over RRC.\n  - **messageType** [Mandatory]: *Authentication Response*.\n  - **resStar** [Mandatory]: The UE’s computed response (RES*) to the RAND challenge, in its truncated/hash form as expected by the network."
+          },
+          {from: "gNB", to: "AMF", label: "20  UplinkNASTransport (AuthenticationResponse)", info: {
+              header: {msg: "UplinkNASTransport", protocol: "NGAP"},
+              payload: {
+                  "nasPdu [Mandatory]": {messageType: "AuthenticationResponse", resStar: "0xXXXXXXXXXXXXXXXX"}
+              }
+          }, comment: "gNB forwards the UE's Authentication Response (RES*) to the AMF. \n- **nasPdu** [Mandatory]: Contains the NAS *Authentication Response* from the UE.\n  - **messageType** [Mandatory]: *Authentication Response*.\n  - **resStar** [Mandatory]: The UE’s authentication response (RES*), which the AMF/AUSF will compare with the expected XRES* to verify authentication."
+          },
+          {from: "AMF", to: "AUSF", label: "21  Nausf_UEAuthentication_Confirm Request", info: {
+              http: {method: "PUT", uri: "/nausf-auth/v1/ue-authentications/{authId}"},
+              body: {resStar: "RES*"}
+          }, comment: "AMF provides the UE's authentication response (RES*) to the AUSF for verification. \n- **resStar** [Mandatory]: The UE’s computed RES* (response) for the authentication challenge, delivered to the AUSF so it can confirm whether it matches the expected value (XRES*)."
+          },
+          {from: "AUSF", to: "AMF", label: "22  Nausf_UEAuthentication_Confirm Response", info: {
+              status: 200,
+              body: {authResult: "SUCCESS"}
+          }, comment: "AUSF confirms the authentication result to the AMF (successful or failure). \n- **authResult** [Mandatory]: Indicates the outcome of the authentication verification. “SUCCESS” means the RES* provided by the UE matched the expected value (XRES*), i.e. the UE is authenticated."
+          },
+          {from: "AMF", to: "gNB", label: "23  DownlinkNASTransport (SecurityModeCommand)", info: {
+              header: {msg: "DownlinkNASTransport", protocol: "NGAP"},
+              payload: {
+                  "nasPdu [Mandatory]": {
+                      messageType: "SecurityModeCommand",
+                      selectedNAS_Algorithms: {ciphering: "NEA0", integrity: "NIA1"},
+                      imeisvRequest: true
+                  }
+              }
+          }, comment: "AMF initiates NAS security mode setup, selecting NAS ciphering/integrity algorithms and requesting the UE's IMEISV. \n- **nasPdu** [Mandatory]: NAS *Security Mode Command* message sent to establish NAS security.\n  - **messageType** [Mandatory]: *Security Mode Command* (NAS).\n  - **selectedNAS_Algorithms** [Mandatory]: The NAS protection algorithms chosen by the AMF for this UE. Here it specifies ciphering algorithm **NEA0** and integrity algorithm **NIA1** (NEA0 indicates no NAS encryption in this example, and NIA1 is an integrity algorithm).\n  - **imeisvRequest** [Optional]: A flag indicating whether the UE’s IMEISV (device identity) is requested by the network. `true` means the AMF is instructing the UE to provide its IMEISV as part of security mode completion."
+          },
+          {from: "gNB", to: "UE", label: "24  DLInformationTransfer (SecurityModeCommand)", info: {
+              header: {msg: "DLInformationTransfer", protocol: "RRC"},
+              payload: {
+                  "dedicatedNAS_Message [Optional]": {
+                      messageType: "SecurityModeCommand",
+                      selectedNAS_Algorithms: {ciphering: "NEA0", integrity: "NIA1"},
+                      imeisvRequest: true
+                  }
+              }
+          }, comment: "gNB delivers the NAS Security Mode Command to the UE. \n- **dedicatedNAS_Message** [Optional]: The NAS *Security Mode Command* transmitted via RRC.\n  - **messageType** [Mandatory]: *Security Mode Command*.\n  - **selectedNAS_Algorithms** [Mandatory]: Indicates the NAS encryption and integrity algorithms that the AMF has selected for use (ciphering: NEA0, integrity protection: NIA1 as chosen by the AMF).\n  - **imeisvRequest** [Optional]: The UE’s IMEISV (device identity) is requested by the network (since the AMF set the flag, the UE must send its IMEISV in the Security Mode Complete)."
+          },
+          {from: "UE", to: "gNB", label: "25  ULInformationTransfer (SecurityModeComplete)", info: {
+              header: {msg: "ULInformationTransfer", protocol: "RRC"},
+              payload: {
+                  "dedicatedNAS_Message [Optional]": {
+                      messageType: "SecurityModeComplete",
+                      imeisv: "0123456789012345"
+                  }
+              }
+          }, comment: "UE confirms the NAS security mode setup (Security Mode Complete, including the IMEISV). \n- **dedicatedNAS_Message** [Optional]: NAS *Security Mode Complete* message, indicating the UE has applied the NAS security settings.\n  - **messageType** [Mandatory]: *Security Mode Complete*.\n  - **imeisv** [Optional]: The UE’s International Mobile Equipment Identity (IMEI) with software version, provided because the network requested it (this field is present since **imeisvRequest** was true)."
+          },
+          {from: "gNB", to: "AMF", label: "26  UplinkNASTransport (SecurityModeComplete)", info: {
+              header: {msg: "UplinkNASTransport", protocol: "NGAP"},
+              payload: {
+                  "nasPdu [Mandatory]": {messageType: "SecurityModeComplete", imeisv: "0123456789012345"}
+              }
+          }, comment: "gNB forwards the Security Mode Complete (with IMEISV) to the AMF. \n- **nasPdu** [Mandatory]: Contains the NAS *Security Mode Complete* message.\n  - **messageType** [Mandatory]: *Security Mode Complete*.\n  - **imeisv** [Optional]: The IMEISV of the UE, included because the network requested the device identity (this value confirms the UE’s device identity to the network)."
+          },
+          {from: "AMF", to: "EIR", label: "27  N5g-eir_EquipmentIdentityCheck Request", info: {
+              http: {method: "POST", uri: "/5g-eir/v1/equipment-status"},
+              body: {pei: "IMEI:0123456789012345", supi: "imsi-001010000000001"}
+          }, comment: "AMF checks the UE's device ID (PEI/IMEI) with the EIR to see if it is blacklisted. \n- **pei** [Mandatory]: The Permanent Equipment Identifier of the UE (here given as an IMEI with SV). This is the device’s identity that the AMF wants to verify.\n- **supi** [Optional]: The subscriber’s identity (IMSI) provided alongside the request (the EIR primarily checks the equipment identity; the SUPI may be included for logging or additional policies)."
+          },
+          {from: "EIR", to: "AMF", label: "28  N5g-eir_EquipmentIdentityCheck Response", info: {
+              status: 200,
+              body: {status: "whitelist"}
+          }, comment: "The EIR returns the equipment check result (e.g., indicating the PEI is not blacklisted). \n- **status** [Mandatory]: The result of the equipment identity check. “whitelist” indicates the device is recognized as allowed (not blacklisted)."
+          },
+          {from: "AMF", to: "UDM", label: "29  Nudm_UEContextManagement_Registration Request", info: {
+              http: {method: "PUT", uri: "/nudm-uecm/v1/{ueId}/registrations/amf-3gpp-access"},
+              body: {
+                  amfInstanceId: "AMF1",
+                  guami: {plmnId: "00101", amfId: "abcdef"},
+                  deregCallbackUri: "https://amf.example.com/namf-comm/v1/{ueId}/dereg-notify"
+              }
+          }, comment: "AMF registers the UE's context in the UDM (AMF information, access type, etc.). \n- **amfInstanceId** [Mandatory]: The unique identifier of the AMF instance (here “AMF1”) now serving the UE:contentReference[oaicite:23]{index=23}.\n- **guami** [Mandatory]: The Globally Unique AMF Identifier for this AMF (and the UE). It includes the serving PLMN (00101) and AMF ID (\"abcdef\"), identifying the AMF’s region/set/pointer that is serving the UE:contentReference[oaicite:24]{index=24}.\n- **deregCallbackUri** [Mandatory]: The callback URI that UDM should call if this UE’s registration is removed (de-registered). It points to the AMF’s API for de-registration notifications for this UE."
+          },
+          {from: "UDM", to: "UDR", label: "30  Nudr_DM_Update (AMF3GPPAccess)", info: {
+              http: {method: "PUT", uri: "/nudr-dr/v1/subscription-data/{supi}/ue-context"},
+              body: {servingAmf: "AMF1", accessType: "3GPP"}
+          }, comment: "UDM updates the UDR with the UE's current serving AMF and access type. \n- **servingAmf** [Mandatory]: Identifier of the currently serving AMF for the UE (“AMF1”).\n- **accessType** [Mandatory]: The access type through which the UE is registered (\"3GPP\" indicating 5G NR access)."
+          },
+          {from: "UDR", to: "UDM", label: "31  Nudr_DM_Update Response", info: {
+              status: 204
+          }, comment: "UDR confirms storage of the registration data (HTTP 204 No Content). *(No content in the body indicates the update was successful.)*"
+          },
+          {from: "UDM", to: "AMF", label: "32  Nudm_UEContextManagement_Registration Response", info: {
+              status: 204
+          }, comment: "UDM confirms the UE context registration (success, no content)."
+          },
+          {from: "AMF", to: "UDM", label: "33  Nudm_SubscriberDataManagement_Get Request", info: {
+              http: {method: "GET", uri: "/nudm-sdm/v1/{supi}/subscription-data?dataset=AMData,SMFSelectData"}
+          }, comment: "AMF retrieves the UE's subscription data from UDM (e.g., subscribed S-NSSAIs and default DNN). \n- **dataset**: Specifies which subscription data to fetch. Here `AMData,SMFSelectData` indicates the AMF is requesting Access & Mobility subscription data (Allowed NSSAI, etc.) and SMF Selection data (default slice/DNN information)."
+          },
+          {from: "UDM", to: "UDR", label: "34  Nudr_DM_Query (SubscriptionData)", info: {
+              http: {method: "GET", uri: "/nudr-dr/v1/subscription-data/{supi}/subscription-information"}
+          }, comment: "UDM queries the UDR for the UE's subscription profile (allowed slices, default services, etc.)."
+          },
+          {from: "UDR", to: "UDM", label: "35  Nudr_DM_Query Response", info: {
+              status: 200,
+              body: {
+                  amData: {allowedNSSAI: [{sst: 1, sd: "010203"}]},
+                  smfSelData: {defaultSingleNssai: {sst: 1, sd: "010203"}, defaultDnn: "internet"}
+              }
+          }, comment: "UDR returns the subscription data (e.g., allowed NSSAI and default DNN). \n- **amData** [Optional]: Access and Mobility subscription data for the UE.\n  - **allowedNSSAI** [Optional]: The list of S-NSSAIs (slices) the UE is allowed to use in this PLMN. Here it includes SST 1, SD 010203 (the same slice requested by the UE) as an allowed slice.\n- **smfSelData** [Optional]: Session Management subscription data (used for SMF selection).\n  - **defaultSingleNssai** [Optional]: The default S-NSSAI for the UE’s default PDU session in this network (SST 1, SD 010203 in this case).\n  - **defaultDnn** [Optional]: The default Data Network Name (APN) for the UE – here `internet` – which is the default PDN the UE should use if it doesn’t specify one."
+          },
+          {from: "UDM", to: "AMF", label: "36  Nudm_SubscriberDataManagement_Get Response", info: {
+              status: 200,
+              body: {
+                  allowedNSSAI: [{sst: 1, sd: "010203"}],
+                  defaultDNN: "internet",
+                  smsSubscribed: true,
+                  smsfId: null
+              }
+          }, comment: "UDM responds with the UE's subscription data (Allowed S-NSSAI, default DNN, etc.). \n- **allowedNSSAI** [Optional]: The Allowed NSSAI for the UE – i.e., the slices the UE is permitted to use (here slice SST 1, SD 010203). This reflects the subscription’s allowed slice list.\n- **defaultDNN** [Optional]: The default Data Network Name (e.g., “internet”) that the UE should use for its default PDU session on the allowed slice.\n- **smsSubscribed** [Optional]: Indicates whether the UE’s subscription includes SMS-over-NAS service. `true` means the subscriber is allowed to use SMS in 5G NAS.\n- **smsfId** [Optional]: Identifies the SMSF currently handling the UE (if any). `null` here means no SMSF was previously assigned (no existing SMS context)."
+          },
+          {from: "AMF", to: "UDM", label: "37  Nudm_SubscriberDataManagement_Subscribe Request", info: {
+              http: {method: "POST", uri: "/nudm-sdm/v1/{supi}/subscription-data/subscription"},
+              body: {dataset: "AMData,SMFSelectData"}
+          }, comment: "AMF subscribes with UDM to be notified if the subscription data changes. \n- **dataset**: The set of subscription data for which the AMF wants change notifications. Here the AMF subscribes to updates for AMData and SMFSelectData (so it will be alerted if the allowed NSSAI, default DNN, etc., change for this UE)."
+          },
+          {from: "UDM", to: "UDR", label: "38  Nudr_DM_Subscribe (SubscriptionData)", info: {
+              http: {method: "POST", uri: "/nudr-dr/v1/subscription-data/{supi}/subscription-data-subscribe"}
+          }, comment: "UDM subscribes to UDR for changes in the UE's subscription data. *(This allows UDM to get notifications from UDR, and in turn inform AMF.)*"
+          },
+          {from: "UDR", to: "UDM", label: "39  Nudr_DM_Subscribe Response", info: {
+              status: 204
+          }, comment: "UDR confirms the subscription to data change notifications (204 No Content)."
+          },
+          {from: "UDM", to: "AMF", label: "40  Nudm_SubscriberDataManagement_Subscribe Response", info: {
+              status: 204
+          }, comment: "UDM confirms the AMF's data subscription request (HTTP 204 No Content)."
+          },
+          {from: "AMF", to: "NSSF", label: "41  Nnssf_NSSelection_Get Request", info: {
+              http: {method: "GET", uri: "/nnssf-nsselection/v1/network-slice-information?homeSnssai={sst:1,sd:'010203'}&tai=001-01-000A"}
+          }, comment: "AMF requests allowed slice(s) and configuration from the NSSF for the UE's subscribed S-NSSAI. \n- **homeSnssai** [Optional]: The S-NSSAI from the UE’s home subscription (SST 1, SD 010203) that the UE is attempting to use. This is provided to NSSF so it can consider roaming slice mappings if needed.\n- **tai** [Mandatory]: The Tracking Area Identity (001-01-000A) indicating the UE’s location. NSSF uses the TAI to determine which slices are available/allowed in that area."
+          },
+          {from: "NSSF", to: "AMF", label: "42  Nnssf_NSSelection_Get Response", info: {
+              status: 200,
+              body: {allowedNssai: [{sst: 1, sd: "010203"}], targetAmfSet: "AMF_SET_1"}
+          }, comment: "NSSF returns the Allowed NSSAI for the UE (and possibly target AMF set or candidate AMFs). \n- **allowedNssai** [Mandatory]: The list of S-NSSAIs that the UE is allowed to use in the current serving area. In this case, it returns SST 1, SD 010203 (the slice is allowed as is).\n- **targetAmfSet** [Optional]: A suggested AMF Set ID (or target AMF) for serving the UE’s slice. Here “AMF_SET_1” indicates that if needed, the UE could be served by AMFs in set 1 (often used if the slice is only handled by a specific AMF set)."
+          },
+          {from: "AMF", to: "PCF", label: "43  Npcf_AMPolicyControl_Create Request", info: {
+              http: {method: "POST", uri: "/npcf-am-policy-control/v1/policies"},
+              body: {supi: "imsi-001010000000001", accessType: "3GPP", allowedNssai: [{sst: 1, sd: "010203"}]}
+          }, comment: "AMF establishes an AM Policy association with the PCF for the UE. \n- **supi** [Mandatory]: The subscriber’s identity for which an access and mobility policy is being created.\n- **accessType** [Mandatory]: The access type (“3GPP” for cellular) that the UE is using.\n- **allowedNssai** [Optional]: The Allowed NSSAI that the UE has in the serving network. The AMF provides the list of allowed slice(s) (here SST 1/SD 010203) so that PCF can take slice-based policy decisions."
+          },
+          {from: "PCF", to: "AMF", label: "44  Npcf_AMPolicyControl_Create Response", info: {
+              status: 201,
+              body: {
+                  policyAssociationId: "PA-001",
+                  amPolicy: {
+                      policyControlReqTriggers: ["LOC_CH"],
+                      policyConstraints: {}
+                  }
+              }
+          }, comment: "PCF confirms the creation of the AM Policy Association and returns a Policy Association ID. \n- **policyAssociationId** [Mandatory]: An identifier for the policy association that has been created (e.g., “PA-001”). The AMF will use this ID for subsequent policy updates.\n- **amPolicy** [Optional]: The details of the policy rules and triggers.\n  - **policyControlReqTriggers** [Optional]: A list of events that should trigger the AMF to report to PCF. Here it includes “LOC_CH” (location change), meaning PCF wants to be informed if the UE’s location changes.\n  - **policyConstraints** [Optional]: Any specific constraints on the policy. (Empty in this case, indicating default or no special constraints.)"
+          },
+          {from: "AMF", to: "gNB", label: "45  InitialContextSetupRequest", info: {
+              header: {msg: "InitialContextSetupRequest", protocol: "NGAP"},
+              payload: {
+                  "nasPdu": {
+                      "messageType": "RegistrationAccept",
+                      "guti": {plmnId: "001/01", amfRegionId: 1, amfSetId: 1, amfPointer: 2, tmsi: "0x11111111"},
+                      "taiList": [{plmnId: "001/01", tac: "000A"}],
+                      "allowedNSSAI": [{sst: 1, sd: "010203"}],
+                      "smsAllowed": true
+                  }
+              }
+          }, comment: "AMF establishes the UE's context at the gNB, sending the Registration Accept NAS message (with new 5G-GUTI, allowed NSSAI, TAI list, etc.). \n- **nasPdu** (Registration Accept): The NAS Registration Accept message for the UE’s attach.\n  - **messageType** [Mandatory]: *Registration Accept* – indicating the NAS procedure acceptance for registration.\n  - **guti** [Optional]: The new 5G-GUTI assigned to the UE. It includes the PLMN (001/01) and the AMF’s region/Set/pointer and TMSI components. The UE will use this GUTI for future identifications in this network.\n  - **taiList** [Mandatory]: The list of Tracking Areas the UE is registered in. Here it contains the current TA (PLMN 001/01, TAC 000A).\n  - **allowedNSSAI** [Mandatory]: The Allowed NSSAI provided to the UE – i.e., the list of slices it can use in this registration area. Here the slice {SST=1, SD=010203} is indicated, matching the UE’s subscribed/requested slice.\n  - **smsAllowed** [Mandatory]: An indicator in the Registration Accept showing whether SMS-over-NAS is allowed for the UE. *True* means the UE is allowed to send/receive SMS via NAS in this network."
+          },
+          {from: "gNB", to: "UE", label: "46  RRCSecurityModeCommand", info: {
+              header: {msg: "RRCSecurityModeCommand", protocol: "RRC"},
+              payload: {
+                  securityAlgorithmConfig: {ciphering: "NEA2", integrity: "NIA2"}
+              }
+          }, comment: "gNB activates AS security, configuring the RRC and user-plane encryption/integrity algorithms. \n- **securityAlgorithmConfig** [Mandatory]: Contains the selected Access-Stratum security algorithms for RRC and UP traffic:\n  - **ciphering** [Mandatory]: *NEA2* – the ciphering algorithm for RRC/user-plane (NEA2 is a specific 128-bit AES encryption algorithm for NR).\n  - **integrity** [Mandatory]: *NIA2* – the integrity protection algorithm for RRC signaling (NIA2 is a 128-bit AES CMAC algorithm)."
+          },
+          {from: "UE", to: "gNB", label: "47  RRCSecurityModeComplete", info: {
+              header: {msg: "RRCSecurityModeComplete", protocol: "RRC"},
+              payload: {}
+          }, comment: "UE acknowledges the activation of AS security (RRC Security Mode Complete). *(No payload – this message is just a confirmation.)*"
+          },
+          {from: "gNB", to: "UE", label: "48  DLInformationTransfer (RegistrationAccept)", info: {
+              header: {msg: "DLInformationTransfer", protocol: "RRC"},
+              payload: {
+                  dedicatedNAS_Message: {
+                      messageType: "RegistrationAccept",
+                      guti: {plmnId: "001/01", amfRegionId: 1, amfSetId: 1, amfPointer: 2, tmsi: "0x11111111"},
+                      taiList: [{plmnId: "001/01", tac: "000A"}],
+                      allowedNSSAI: [{sst: 1, sd: "010203"}],
+                      smsAllowed: true
+                  }
+              }
+          }, comment: "gNB delivers the Registration Accept (with assigned GUTI, allowed NSSAI, etc.) to the UE. \n- **Registration Accept** (NAS message):\n  - **messageType** [Mandatory]: *Registration Accept*.\n  - **guti** [Optional]: The new 5G-GUTI assigned to the UE (PLMN 001/01, AMF IDs, and TMSI) that the UE will use for future identification in this network.\n  - **taiList** [Mandatory]: List of Tracking Areas the UE is registered in (here one TA: 001/01 TAC 000A). The UE will consider itself registered in these areas.\n  - **allowedNSSAI** [Mandatory]: Allowed slice list for the UE in this area (SST=1, SD=010203) – the network’s confirmation of slices the UE can use.\n  - **smsAllowed** [Mandatory]: Indicates SMS-over-NAS is allowed for the UE in this network (set to true, matching the earlier indication)."
+          },
+          {from: "UE", to: "gNB", label: "49  ULInformationTransfer (RegistrationComplete)", info: {
+              header: {msg: "ULInformationTransfer", protocol: "RRC"},
+              payload: {dedicatedNAS_Message: {messageType: "RegistrationComplete"}}
+          }, comment: "UE indicates the completion of the registration procedure (Registration Complete). \n- **dedicatedNAS_Message** [Optional]: NAS *Registration Complete* message, indicating the UE has finished the registration process and no further NAS messages are pending.\n  - **messageType** [Mandatory]: *Registration Complete*."
+          },
+          {from: "gNB", to: "AMF", label: "50  UplinkNASTransport (RegistrationComplete)", info: {
+              header: {msg: "UplinkNASTransport", protocol: "NGAP"},
+              payload: {nasPdu: {messageType: "RegistrationComplete"}}
+          }, comment: "gNB forwards the Registration Complete NAS message to the AMF. *(This informs the AMF that the UE has acknowledged the Registration Accept and that the initial registration procedure is complete on the UE side.)*"
+          },
+          {from: "AMF", to: "gNB", label: "51  InitialContextSetupResponse", info: {
+              header: {msg: "InitialContextSetupResponse", protocol: "NGAP"},
+              payload: {}
+          }, comment: "gNB confirms successful setup of the context to the AMF. *(No PDU session was included in this procedure.)*"
+          },
+          {from: "AMF", to: "gNB", label: "52  UEContextReleaseCommand", info: {
+              header: {msg: "UEContextReleaseCommand", protocol: "NGAP"},
+              payload: {cause: "UE-NormalRelease"}
+          }, comment: "AMF instructs the gNB to release the UE's RAN context (e.g., after successful registration, UE moving to idle). \n- **cause** [Mandatory]: The reason for the release. “UE-NormalRelease” indicates a normal release (e.g., the registration procedure is complete and the UE can be moved to idle, or requested by UE)."
+          },
+          {from: "gNB", to: "UE", label: "53  RRCRelease", info: {
+              header: {msg: "RRCRelease", protocol: "RRC"},
+              payload: {releaseCause: "normal"}
+          }, comment: "gNB releases the RRC connection; UE goes idle. \n- **releaseCause** [Optional]: The reason for RRC release as given by gNB. “normal” indicates a normal release (no error). (If not provided, the UE assumes normal release by default.)"
+          },
+          {from: "gNB", to: "AMF", label: "54  UEContextReleaseComplete", info: {
+              header: {msg: "UEContextReleaseComplete", protocol: "NGAP"},
+              payload: {}
+          }, comment: "gNB confirms the UE context release to the AMF; the registration procedure is fully complete. *(No payload; this message signals that the gNB has released radio resources and the UE’s NGAP context is cleared.)*"
+          }
+      ]
+
+
+      /* ====== Page Elements ====== */
+      const headerInner=document.getElementById('header-names-inner');
+      const bodyDiv=document.getElementById('diagram-body');
+      const svg=document.getElementById('diagram');
+      const diagramContainer=document.getElementById('diagram-container');
+      const verticalDivider=document.getElementById('vertical-divider');
+      const viewerWrapper=document.getElementById('viewer-wrapper');
+
+      const rightDetail=document.getElementById('right-detail');
+      const jsonViewer=document.getElementById('json-viewer');
+      const commentViewer=document.getElementById('comment-viewer');
+      const commentContent=document.getElementById('comment-content');
+      const hDivider=document.getElementById('horizontal-divider');
+
+      function expandAll(open){
+        const ds=jsonViewer.querySelectorAll('details');
+        ds.forEach(d=>{d.open=!!open});
+      }
+
+      /* ====== Render Signaling Diagram ====== */
+      const headerHeight=50;
+      const margin={top:headerHeight,bottom:50,left:100,right:100};
+      const xStep=200,msgSpacing=80;
+
+      // ====== Relay toggles & helpers ======
+      const toggles={
+        showSCP: JSON.parse(localStorage.getItem('showSCP')||'false'),
+        showDRA: JSON.parse(localStorage.getItem('showDRA')||'false'),
+        splitMessagesForRelays: JSON.parse(localStorage.getItem('splitMessagesForRelays')||'true')
+      };
+      function saveToggle(key,val){ try{ localStorage.setItem(key, JSON.stringify(!!val)); }catch(e){} }
+      function isSBI(h){ const p=String((h&&h.protocol)||'').toUpperCase(); const iface=String((h&&h.interface)||''); return p==='HTTP/SBI'||p==='SBI'||/^[Nn]/.test(iface); }
+      function isDiameter(h){ const p=String((h&&h.protocol)||'').toUpperCase(); return p==='DIAMETER'; }
+      function computeRelays(m,tog){
+        const h=(m&&m.info&&m.info.header)||m.header||{};
+        const hints=(m&&m.routeHints)||(h&&h.routeHints)||{};
+        const force=Array.isArray(hints&&hints.forceRelays)?hints.forceRelays:[];
+        const skip=Array.isArray(hints&&hints.skipRelays)?hints.skipRelays:[];
+        const out=[];
+        if((force.includes('SCP')||tog.showSCP)&&isSBI(h)&&!skip.includes('SCP')) out.push('SCP');
+        if((force.includes('DRA')||tog.showDRA)&&isDiameter(h)&&!skip.includes('DRA')) out.push('DRA');
+        return out;
+      }
+      function ensureRelayLanes(nodes0,messages0,tog){
+        const lanes=Array.from(nodes0||[]);
+        const idxMap={};
+        function ensure(name){
+          if(idxMap[name]!==undefined) return;
+          let existing=lanes.indexOf(name);
+          if(existing>=0){ idxMap[name]=existing; return; }
+          const pairs=[];
+          (messages0||[]).forEach(m=>{
+            const rs=computeRelays(m,tog);
+            if(rs.includes(name)){
+              let fi=lanes.indexOf(m.from); let ti=lanes.indexOf(m.to);
+              if(fi<0){ lanes.push(m.from); fi=lanes.length-1; }
+              if(ti<0){ lanes.push(m.to); ti=lanes.length-1; }
+              pairs.push([fi,ti]);
+            }
+          });
+          let pos=Math.floor(lanes.length/2);
+          if(pairs.length){
+            const mids=pairs.map(([a,b])=>Math.floor((Math.min(a,b)+Math.max(a,b))/2)).sort((a,b)=>a-b);
+            pos=mids[Math.floor(mids.length/2)];
+          }
+          lanes.splice(pos,0,name);
+          lanes.forEach((n,i)=>{ if(n==='SCP'||n==='DRA') idxMap[n]=i; });
+        }
+        if(tog.showSCP) ensure('SCP');
+        if(tog.showDRA) ensure('DRA');
+        lanes.forEach((n,i)=>{ if(n==='SCP'||n==='DRA') idxMap[n]=i; });
+        return {lanes, idxMap};
+      }
+      function expandWithRelays(messages0,tog){
+        if(!tog.splitMessagesForRelays) return Array.from(messages0||[]);
+        const seg=[];
+        (messages0||[]).forEach(m=>{
+          const rs=computeRelays(m,tog);
+          if(!rs.length){ seg.push(m); return; }
+          const path=[m.from].concat(rs).concat([m.to]);
+          for(let k=0;k<path.length-1;k++){
+            const mm={
+              from: path[k],
+              to: path[k+1],
+              label: m.label,
+              info: { header: (m.info&&m.info.header)||{}, payload: (m.info&&m.info.payload)||{} },
+              comment: k===0 ? (m.comment || ((m.doc&&m.doc.comment_md)||'')) : ''
+            };
+            if(k===0 && m.doc) mm.doc=m.doc;
+            seg.push(mm);
+          }
+        });
+        return seg;
+      }
+      function applyRelayOverlay(nodes0,messages0,tog){
+        const lanesInfo=ensureRelayLanes(nodes0,messages0,tog);
+        const msgs=expandWithRelays(messages0,tog);
+        return {nodes: lanesInfo.lanes, messages: msgs};
+      }
+      (function installRelayControls(){
+        const collapsed = true; // default collapsed
+        const box=document.createElement('div');
+        box.style.position='fixed'; box.style.top='8px'; box.style.left='8px';
+        box.style.zIndex='9999'; box.style.font='12px system-ui, -apple-system, Segoe UI, Roboto';
+        box.style.background='rgba(255,255,255,0.92)'; box.style.color='#111';
+        box.style.borderRadius='8px'; box.style.boxShadow='0 2px 8px rgba(0,0,0,0.25)';
+        box.style.backdropFilter='blur(2px)';
+        box.style.padding= collapsed ? '4px 6px' : '6px 8px';
+
+        const head=document.createElement('div');
+        head.style.display='flex'; head.style.alignItems='center'; head.style.gap='6px';
+        head.style.cursor='pointer'; head.style.userSelect='none';
+        const icon=document.createElement('span'); icon.textContent= collapsed ? '⚙️' : '—'; icon.style.lineHeight='1';
+        head.appendChild(icon);
+
+        const content=document.createElement('div');
+        content.innerHTML='<label style="display:block;cursor:pointer"><input type="checkbox" id="__tog_scp"> Show SCP</label>'+
+                          '<label style="display:block;cursor:pointer"><input type="checkbox" id="__tog_dra"> Show DRA</label>'+
+                          '<label style="display:block;cursor:pointer"><input type="checkbox" id="__tog_split"> Split messages into segments</label>';
+
+        box.appendChild(head); box.appendChild(content);
+        document.body.appendChild(box);
+
+        const cS=document.getElementById('__tog_scp'), cD=document.getElementById('__tog_dra'), cP=document.getElementById('__tog_split');
+        cS.checked=!!toggles.showSCP; cD.checked=!!toggles.showDRA; cP.checked=!!toggles.splitMessagesForRelays;
+        function onChange(){ saveToggle('showSCP', cS.checked); saveToggle('showDRA', cD.checked); saveToggle('splitMessagesForRelays', cP.checked); location.reload(); }
+        cS.addEventListener('change', onChange); cD.addEventListener('change', onChange); cP.addEventListener('change', onChange);
+
+        function applyCollapse(state){
+          if(state){
+            content.style.display='none';
+            icon.textContent='⚙️';
+            box.style.padding='4px 6px';
+            box.style.borderRadius='999px';
+          }else{
+            content.style.display='block';
+            icon.textContent='—';
+            box.style.padding='6px 8px';
+            box.style.borderRadius='8px';
+          }
+          try{ localStorage.setItem('__relayBoxCollapsed', JSON.stringify(!!state)); }catch(e){}
+        }
+        applyCollapse(collapsed);
+        head.addEventListener('click', ()=>{
+          const newState = content.style.display==='none' ? false : true;
+          applyCollapse(newState);
+        });
+      })();
+      const overlay=applyRelayOverlay(nodes, messages, toggles);
+      const nodesRef=overlay.nodes;
+      const messagesRef=overlay.messages;
+      const totalHeight=margin.top+msgSpacing*(messagesRef.length+1)+margin.bottom;
+      const totalWidth=margin.left+xStep*(nodesRef.length-1)+margin.right;
+      svg.setAttribute('width',totalWidth);
+      svg.setAttribute('height',totalHeight);
+      headerInner.style.width=totalWidth+'px';
+
+      /* X Coordinates */
+      const xs={};
+      nodesRef.forEach((n,i)=>{
+        const x=margin.left+i*xStep;
+        xs[n]=x;
+        const d=document.createElement('div');
+        d.className='node-name';
+        d.textContent=n;
+        d.style.left=x+'px';
+        headerInner.appendChild(d);
+        const line=document.createElementNS('http://www.w3.org/2000/svg','line');
+        line.setAttribute('x1',x);line.setAttribute('y1',margin.top);
+        line.setAttribute('x2',x);line.setAttribute('y2',totalHeight-margin.bottom);
+        line.setAttribute('stroke','#aaa');line.setAttribute('stroke-dasharray','4 2');
+        svg.appendChild(line);
+      });
+
+      /* Arrow marker */
+      const defs=document.createElementNS('http://www.w3.org/2000/svg','defs');
+      const marker=document.createElementNS('http://www.w3.org/2000/svg','marker');
+      marker.setAttribute('id','arrow');marker.setAttribute('markerWidth','8');marker.setAttribute('markerHeight','8');
+      marker.setAttribute('refX','6');marker.setAttribute('refY','3');marker.setAttribute('orient','auto');
+      const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d','M0,0 L0,6 L6,3 Z');path.setAttribute('fill','#000');
+      marker.appendChild(path);defs.appendChild(marker);svg.appendChild(defs);
+
+      /* Render message lines and labels */
+      messagesRef.forEach((m,i)=>{
+        const y=margin.top+msgSpacing*(i+1);
+        const x1=xs[m.from],x2=xs[m.to];
+        if(!(Number.isFinite(x1)&&Number.isFinite(x2))) return;
+        const ln=document.createElementNS('http://www.w3.org/2000/svg','line');
+        ln.setAttribute('x1',x1);ln.setAttribute('y1',y);
+        ln.setAttribute('x2',x2);ln.setAttribute('y2',y);
+        ln.setAttribute('stroke','#000');ln.setAttribute('marker-end','url(#arrow)');
+        svg.appendChild(ln);
+        const lbl=document.createElementNS('http://www.w3.org/2000/svg','text');
+        lbl.setAttribute('x',(x1+x2)/2);lbl.setAttribute('y',y-6);
+        lbl.setAttribute('text-anchor','middle');lbl.classList.add('message-label');
+        lbl.textContent=m.label;
+        lbl.addEventListener('click',()=>{
+          try{
+          const safeInfo = (m && m.info) ? m.info : {};
+          renderJSON(safeInfo,jsonViewer);
+          const parser=(window.marked && window.marked.parse ? marked.parse : md);
+          const docRef = (m && (m.doc || (m.info && m.info.doc))) || {};
+          const _summary = (docRef.summary_en || m.summary_en || '');
+          const _comment = (m.comment_md || docRef.comment_md || m.comment || '');
+          const _steps = (docRef.steps !== undefined ? docRef.steps : (m.steps !== undefined ? m.steps : ''));
+          const _primary = (m.primary_ref || (m.info && m.info.primary_ref)) || null;
+
+          const parts=[];
+          if(_primary && (_primary.ts || _primary.section || _primary.version || _primary.release || _primary.ref)){
+            const tsRaw=String(_primary.ts||'').trim();
+            const tsNum=tsRaw.replace(/^\s*TS\s*/i,'');
+            const seriesPart=/^(\d+)\.(\d+)$/.exec(tsNum);
+            const seriesDir=seriesPart? (seriesPart[1]+'_series') : '';
+            const specFolder=seriesPart? (seriesPart[0]) : '';
+            const archiveUrl=(seriesDir && specFolder) ? ('https://www.3gpp.org/ftp/Specs/archive/'+seriesDir+'/'+specFolder+'/') : '';
+            const q=[tsRaw,_primary.version,_primary.release, String(_primary.section||'').replace(/[Â§§搂]/g,'§'),_primary.ref].filter(Boolean).join(' ');
+            const searchUrl='https://duckduckgo.com/?q='+encodeURIComponent(q);
+            const viewerUrl = './spec_viewer.html?ts='+encodeURIComponent(tsRaw)+'&version='+encodeURIComponent(String(_primary.version||''))+'&section='+encodeURIComponent(String(_primary.section||''))+'&ref='+encodeURIComponent(String(_primary.ref||''))+'&release='+encodeURIComponent(String(_primary.release||''));
+            parts.push('<div class="doc-spec"><h4>Specification Reference</h4>'+
+              '<div>Standard: '+(String(_primary.ts||''))+' '+(String(_primary.version||''))+' '+(String(_primary.release||''))+'</div>'+
+              '<div>Section: '+(String(_primary.section||''))+'</div>'+
+              '<div>Title: '+(String(_primary.ref||''))+'</div>'+
+              '<div><a href="'+viewerUrl+'" target="_blank" rel="noopener">Open In-App Spec Viewer</a></div>'+
+              '<div><a href="'+searchUrl+'" target="_blank" rel="noopener">Search specification on the Web</a></div>'+
+              (archiveUrl ? ('<div><a href="'+archiveUrl+'" target="_blank" rel="noopener">Open 3GPP official archive</a></div>') : '')+
+            '</div>');
+          }
+          const header=((safeInfo&&safeInfo.header)||{}); const payload=((safeInfo&&safeInfo.payload)||{});
+          const http=((safeInfo&&safeInfo.http)||m.http||{});
+          const status=(safeInfo&&safeInfo.status);
+          const body=(safeInfo&&safeInfo.body);
+          function kvTable(obj,title){
+            const rows=Object.keys(obj||{}).map(k=>'<tr><td>'+String(k)+'</td><td>'+String((obj&&obj[k])||'')+'</td></tr>').join('');
+            return rows?('<div class="doc-kv"><h4>'+title+'</h4><table><tbody>'+rows+'</tbody></table></div>'):'';
+          }
+          if(Object.keys(header||{}).length || Object.keys(payload||{}).length){
+            parts.push('<div class="doc-struct"><h4>Message Structure</h4>'+kvTable(header,'Header')+kvTable(payload,'Payload')+'</div>');
+          }
+          if(Object.keys(http||{}).length || status!==undefined || body!==undefined){
+            const rows=[];
+            if(http&&http.method) rows.push('<tr><td>method</td><td>'+String(http.method)+'</td></tr>');
+            if(http&&http.uri) rows.push('<tr><td>uri</td><td>'+String(http.uri)+'</td></tr>');
+            if(status!==undefined) rows.push('<tr><td>status</td><td>'+String(status)+'</td></tr>');
+            parts.push('<div class="doc-http"><h4>HTTP/SBI</h4><table><tbody>'+rows.join('')+'</tbody></table></div>');
+          }
+          const ieTree=(m.ie_tree||((safeInfo&&safeInfo.ie_tree)||[]));
+          const ieDict=(m.ie_dict||((safeInfo&&safeInfo.ie_dict)||{}));
+          if(Array.isArray(ieTree)&&ieTree.length){
+            function renderIE(items){
+              const stack=['<ul>'];
+              items.forEach(it=>{
+                stack.push('<li><strong>'+String(it.name||'')+'</strong> ['+String(it.presence||'')+'] '+(it.occurs?'('+String(it.occurs)+')':'')+'</li>');
+                if(Array.isArray(it.children)&&it.children.length){ stack.push(renderIE(it.children)); }
+              });
+              stack.push('</ul>'); return stack.join('');
+            }
+            parts.push('<div class="doc-ie"><h4>Information Elements</h4>'+renderIE(ieTree)+'</div>');
+          }
+          if(ieDict && Object.keys(ieDict).length){
+            const rows=Object.keys(ieDict).map(k=>{
+              const v=ieDict[k]||{}; return '<tr><td>'+String(k)+'</td><td>'+String(v.doc||v.desc_en||'')+'</td></tr>';
+            }).join('');
+            parts.push('<div class="doc-iedict"><h4>IE Dictionary</h4><table><tbody>'+rows+'</tbody></table></div>');
+          }
+          if(_summary){
+            parts.push('<div class="doc-summary"><h4>Summary</h4>'+parser(_summary)+'</div>');
+          }
+          if(Array.isArray(_steps) && _steps.length){
+            parts.push('<div class="doc-steps"><h4>Steps</h4><ol>'+_steps.map(s=>'\n<li>'+parser(s)+'</li>').join('')+'\n</ol></div>');
+          }else if(typeof _steps==='string' && _steps.trim()){
+            parts.push('<div class="doc-steps"><h4>Steps</h4>'+parser(_steps)+'</div>');
+          }
+          if(_comment){
+            parts.push('<div class="doc-comment"><h4>Comment</h4>'+parser(_comment)+'</div>');
+          }
+          commentContent.innerHTML=parts.join('<hr class="doc-sep"/>')||'<em>No additional documentation.</em>';
+          }catch(e){ try{ commentContent.textContent='Unable to render message details.'; }catch(ex){} }
+        });
+        svg.appendChild(lbl);
+      });
+
+      /* ====== JSON render function ====== */
+      function renderJSON(obj,container){
+        container.innerHTML='';
+        function walk(k,v,parent){
+          if(v&&typeof v==='object'){
+            const d=document.createElement('details');d.open=true;
+            const s=document.createElement('summary');s.textContent=k;d.appendChild(s);
+            for(const kk in v)walk(kk,v[kk],d);
+            parent.appendChild(d);
+          }else{
+            const div=document.createElement('div');
+            div.textContent=k+': '+v;parent.appendChild(div);
+          }
+        }
+        for(const key in obj)walk(key,obj[key],container);
+      }
+
+      
+      /* ====== Sync horizontal scroll: keep node headers aligned with vertical lines ===== */
+      bodyDiv.addEventListener('scroll', () => {
+        headerInner.style.transform = `translateX(${-bodyDiv.scrollLeft}px)`;
+      });
+      /* Initialize once to avoid misalignment on initial load */
+      headerInner.style.transform = 'translateX(0px)';
+      /* ====== Right panel drag ===== */
+      verticalDivider.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        const startX=e.clientX,startW=viewerWrapper.offsetWidth;
+        function onMove(ev){viewerWrapper.style.width=(startW-(ev.clientX-startX))+'px';}
+        function stop(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',stop);}
+        document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',stop);
+      });
+
+      function initVertical(){
+        const h=Math.max(120, Math.floor(rightDetail.clientHeight*0.35));
+        jsonViewer.style.top='0';
+        jsonViewer.style.height=h+'px';
+        hDivider.style.top=h+'px';
+        commentViewer.style.top=(h+5)+'px';
+        commentViewer.style.height=(rightDetail.clientHeight-h-5)+'px';
+      }
+      initVertical();window.addEventListener('resize',initVertical);
+      hDivider.addEventListener('mousedown',e=>{
+        e.preventDefault();
+        const startY=e.clientY,startH=jsonViewer.offsetHeight;
+        function onMove(ev){
+          const newH=startH+(ev.clientY-startY);
+          jsonViewer.style.height=newH+'px';hDivider.style.top=newH+'px';
+          commentViewer.style.top=(newH+5)+'px';commentViewer.style.height=(rightDetail.clientHeight-newH-5)+'px';
+        }
+        function stop(){document.removeEventListener('mousemove',onMove);document.removeEventListener('mouseup',stop);}
+        document.addEventListener('mousemove',onMove);document.addEventListener('mouseup',stop);
+      });
+
+      /* ====== Zoom and Pan ===== */
+      const originalW=totalWidth,originalH=totalHeight;let scale=1;
+      svg.setAttribute('viewBox',`0 0 ${originalW} ${originalH}`);
+
+      /* Drag to pan (preserve behavior without changing cursor style) */
+      let dragging=false,sx=0,sy=0;
+      diagramContainer.addEventListener('mousedown',e=>{
+        dragging=true;sx=e.clientX;sy=e.clientY;e.preventDefault();});
+      document.addEventListener('mousemove',e=>{
+        if(!dragging) return;
+        bodyDiv.scrollLeft-=e.clientX-sx;
+        bodyDiv.scrollTop -=e.clientY-sy;
+        sx=e.clientX;sy=e.clientY;
+      });
+      document.addEventListener('mouseup',()=>{dragging=false;});
+
+      /* Zoom (centered at mouse position) */
+      diagramContainer.addEventListener('wheel',e=>{
+        if(!e.ctrlKey)return;
+        e.preventDefault();
+        const factor=(Math.abs(e.deltaY)<50)?(e.deltaY<0?1.05:0.95):(e.deltaY<0?1.2:0.8);
+        const newScale=scale*factor;if(newScale<0.1||newScale>10)return;
+        const rect=bodyDiv.getBoundingClientRect();
+        const cx=e.clientX-rect.left,cy=e.clientY-rect.top;
+        const contentX=(bodyDiv.scrollLeft+cx)/scale;
+        const contentY=(bodyDiv.scrollTop+cy)/scale;
+        scale=newScale;
+        svg.setAttribute('width',originalW*scale);svg.setAttribute('height',originalH*scale);
+        headerInner.style.width=(originalW*scale)+'px';
+        nodesRef.forEach((n,i)=>{headerInner.children[i].style.left=((margin.left+i*xStep)*scale)+'px';});
+        bodyDiv.scrollLeft=contentX*scale-cx;
+        bodyDiv.scrollTop =contentY*scale-cy;
+      },{passive:false});
+
+      const hdr=document.getElementById('viewer-header');
+      const btns=document.createElement('div');
+      btns.style.float='right';
+      const b1=document.createElement('button'); b1.textContent='Expand'; b1.style.marginLeft='8px'; b1.onclick=()=>expandAll(true);
+      const b2=document.createElement('button'); b2.textContent='Collapse'; b2.style.marginLeft='8px'; b2.onclick=()=>expandAll(false);
+      btns.appendChild(b1); btns.appendChild(b2); hdr.appendChild(btns);
+    });
+  </script>
+
+  <script id="addon-script">
+    document.addEventListener('DOMContentLoaded', function(){
+      const labels = Array.from(document.querySelectorAll('.message-label'));
+      let currentIdx = -1;
+      const select = (idx, viaKey=false) => {
+        if(idx < 0 || idx >= labels.length) return;
+        if(currentIdx >= 0) labels[currentIdx].classList.remove('selected');
+        currentIdx = idx;
+        const lbl = labels[currentIdx];
+        lbl.classList.add('selected');
+        if(viaKey) {
+          lbl.scrollIntoView({block:'center', inline:'center'});
+        }
+        lbl.dispatchEvent(new Event('click'));
+      };
+      labels.forEach((lbl, idx) => {
+        lbl.addEventListener('click', () => {
+          if(currentIdx >= 0) labels[currentIdx].classList.remove('selected');
+          currentIdx = idx;
+          lbl.classList.add('selected');
+        });
+      });
+      document.addEventListener('keydown', (e) => {
+        if(e.key === 'ArrowDown'){
+          e.preventDefault();
+          select(currentIdx + 1, true);
+        } else if(e.key === 'ArrowUp'){
+          e.preventDefault();
+          select(currentIdx - 1, true);
+        }
+      });
+      // Auto-select the first message so the right panel is populated
+      if (labels.length > 0) {
+        select(0, false);
+      }
+    });
+  </script>
+
+<!-- BRIDGE: hash parse + READY + postMessage listener -->
+<script>
+(function(){
+  try {
+    if (location.hash && location.hash.length > 1) {
+      var data = JSON.parse(decodeURIComponent(location.hash.slice(1)));
+      if (data && data.nodes && data.messages) window.__FLOW__ = data;
+    }
+  } catch(e){}
+  try { window.parent && window.parent.postMessage('STYLEA_READY', '*'); } catch(e){}
+  window.addEventListener('message', function(e){
+    if (e && e.data && e.data.type === 'FLOW') {
+      window.__FLOW__ = e.data.data;
+      // Force reload so DOMContentLoaded renderer re-runs with new data
+      location.replace(location.pathname + '#' + encodeURIComponent(JSON.stringify(window.__FLOW__)));
+      location.reload();
+    }
+  });
+})();
+</script>
+
+</body>
+</html>

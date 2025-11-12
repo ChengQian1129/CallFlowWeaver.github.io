@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Spec Viewer</title>
+  <style>
+    body{margin:0;font:14px system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111}
+    #bar{display:flex;gap:8px;align-items:center;padding:8px 12px;border-bottom:1px solid #ddd;flex-wrap:wrap}
+    #info{margin-left:auto;font-size:12px;color:#555}
+    #links a{margin-right:12px}
+    #frame{width:100vw;height:calc(100vh - 44px);border:0}
+    code{background:#f5f5f5;padding:2px 4px;border-radius:3px}
+  </style>
+</head>
+<body>
+  <div id="bar">
+    <div id="title">Loading…</div>
+    <div id="links"></div>
+    <div id="info"></div>
+  </div>
+  <iframe id="frame"></iframe>
+  <script>
+    (function(){
+      function get(k){ return new URLSearchParams(location.search).get(k)||''; }
+      function normSection(s){ s=String(s||'').trim().replace(/[Â§§搂]/g,'§'); const m=s.match(/(\d+(?:\.\d+)*)/); return m?m[1]:''; }
+      function parseTS(raw){ const t=String(raw||'').trim(); const num=t.replace(/^\s*TS\s*/i,''); const m=num.match(/^(\d+)\.(\d{3})$/); return m?{series:m[1], spec:m[2]}:null; }
+      function toEtsiId(ts){ return ts?('1'+ts.series+ts.spec):''; }
+      function vDigits(v){ v=String(v||'').trim(); const mv=v.match(/V?(\d+)\.(\d+)\.(\d+)/i); if(!mv) return ''; return (mv[1].padStart(2,'0')+'.'+mv[2].padStart(2,'0')+'.'+mv[3].padStart(2,'0')).replace(/\./g,''); }
+      function dirVer(v){ v=String(v||'').trim(); const mv=v.match(/V?(\d+)\.(\d+)\.(\d+)/i); if(!mv) return v.replace(/^V/i,''); return (mv[1].padStart(2,'0')+'.'+mv[2].padStart(2,'0')+'.'+mv[3].padStart(2,'0')); }
+      function etsiGroup(id){ const base=Math.floor(parseInt(id,10)/100)*100; return (String(base).padStart(6,'0')+'_'+String(base+99).padStart(6,'0')); }
+      function buildCandidates(tsRaw, version, section, ref){
+        const out=[]; const ts=parseTS(tsRaw); const sec=normSection(section); const v=vDigits(version);
+        if(ts){
+          const id=toEtsiId(ts); const group=etsiGroup(id);
+          ['20','50','60','70'].forEach(function(suf){ out.push({
+            label:'ETSI deliver (PDF '+version+', '+suf+')',
+            url:'https://www.etsi.org/deliver/etsi_ts/'+group+'/'+id+'/'+dirVer(version)+'_'+suf+'/ts_'+id+'v'+v+'p.pdf'+(sec?'#page=':''),
+            pageFromIndex: !!sec
+          }); });
+          ['20','50','60','70'].forEach(function(suf){ out.push({
+            label:'Local ETSI mirror (PDF '+version+', '+suf+')',
+            url:'./specs/etsi/'+group+'/'+id+'/'+dirVer(version)+'_'+suf+'/ts_'+id+'v'+v+'p.pdf'+(sec?'#page=':''),
+          }); });
+          out.push({ label:'Local 3GPP mirror (directory)', url:'./specs/3gpp/'+ts.series+'_series/'+ts.series+'.'+ts.spec+'/' });
+          out.push({ label:'3GPP archive (directory)', url:'https://www.3gpp.org/ftp/Specs/archive/'+ts.series+'_series/'+ts.series+'.'+ts.spec+'/' });
+        }
+        if(/^RFC\s*\d+/i.test(tsRaw)){
+          const rid=String(tsRaw).match(/\d+/)[0]; const secNum=normSection(section);
+          if(secNum){
+            out.push({ label:'RFC HTML', url:'https://datatracker.ietf.org/doc/html/rfc'+rid+'#section-'+secNum });
+            out.push({ label:'Local RFC HTML', url:'./specs/rfc/rfc'+rid+'.html#section-'+secNum });
+          } else {
+            out.push({ label:'RFC HTML', url:'https://datatracker.ietf.org/doc/html/rfc'+rid });
+            out.push({ label:'Local RFC HTML', url:'./specs/rfc/rfc'+rid+'.html' });
+          }
+        }
+        const q=[tsRaw,version,get('release'),normSection(section),ref].filter(Boolean).join(' ');
+        out.push({ label:'Web search', url:'https://duckduckgo.com/?q='+encodeURIComponent(q)});
+        return out;
+      }
+      const tsRaw=get('ts'), version=get('version'), section=get('section'), ref=get('ref');
+      document.getElementById('title').textContent=(tsRaw||'')+' '+(version||'')+' '+(section||'');
+      document.getElementById('info').textContent=(ref||'');
+      const linksDiv=document.getElementById('links');
+      const candidates=buildCandidates(tsRaw, version, section, ref);
+
+      // try load indices
+      let specIndex={}; let sectionIndex={};
+      try{ fetch('./specIndex.json').then(r=>r.json()).then(j=>{ specIndex=j; }).catch(()=>{}); }catch(e){}
+      try{ fetch('./specSectionIndex.json').then(r=>r.json()).then(j=>{ sectionIndex=j; }).catch(()=>{}); }catch(e){}
+
+      const key=(String(tsRaw||'').trim()+'@'+String(version||'').trim());
+      function applyIndex(){
+        let injected=false;
+        const mapped=specIndex && specIndex[key];
+        if(mapped){
+          const secNorm=normSection(section);
+          let url=mapped;
+          const pages = sectionIndex && sectionIndex[key];
+          if(pages && pages[secNorm]) url = url + '#page=' + pages[secNorm];
+          candidates.unshift({ label:'Index mapped (local)', url });
+          injected=true;
+        }
+        candidates.forEach(function(c){ const a=document.createElement('a'); a.href=c.url; a.textContent=c.label; a.target='_blank'; a.rel='noopener'; linksDiv.appendChild(a); });
+        const best=candidates[0]||{};
+        document.getElementById('frame').src=best.url||'';
+      }
+      // apply after a short tick to allow fetch promises to resolve
+      setTimeout(applyIndex, 150);
+    })();
+  </script>
+</body>
+</html>
