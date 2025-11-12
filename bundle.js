@@ -623,6 +623,24 @@ function App() {
     } catch (_) {}
   }, []);
 
+  React.useEffect(function () {
+    function onReady() {
+      try {
+        var raw = localStorage.getItem('5gc_imported_truth');
+        if (raw) {
+          var arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            setTruth(arr);
+            setByProto(groupMode === 'interface' ? groupByInterface(arr) : groupByProto(arr));
+            setImportInfo({ ok: arr.length, err: 0 });
+          }
+        }
+      } catch (_) {}
+    }
+    try { document.addEventListener('truthcache-ready', onReady); } catch (_) {}
+    return function () { try { document.removeEventListener('truthcache-ready', onReady); } catch (_) {} };
+  }, [groupMode]);
+
   // 持久化设置
   React.useEffect(function () {
     try {
