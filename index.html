@@ -214,8 +214,8 @@
             var arr=[]; lines.forEach(function(s){ try{ arr.push(JSON.parse(s)); }catch(e){} });
             if(arr.length){
               try{ if(window.truthDb && typeof window.truthDb.putRaw==='function') window.truthDb.putRaw(t); }catch(_e){}
-              localStorage.setItem('5gc_imported_truth', JSON.stringify(arr));
-              localStorage.setItem('5gc_import_text', lines.join('\n'));
+              try{ localStorage.setItem('5gc_imported_truth', JSON.stringify(arr)); }catch(_e){}
+              try{ localStorage.setItem('5gc_import_text', lines.join('\n')); }catch(_e){}
               try{
                 var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
                 var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
