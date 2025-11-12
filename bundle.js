@@ -1558,6 +1558,25 @@ function App() {
       return function(){ try{ document.body.removeChild(overlay); }catch(_){ } };
     }catch(_){ }
   }, [aiBuildOpen]);
+
+  React.useEffect(function(){
+    try{
+      var btn=document.createElement('button');
+      btn.textContent='AI';
+      btn.style.cssText='position:fixed;right:24px;bottom:24px;width:48px;height:48px;border-radius:9999px;background:#2563eb;color:#fff;border:none;box-shadow:0 10px 20px rgba(0,0,0,0.35);cursor:pointer;z-index:2147483606;font-weight:600';
+      btn.title='AI Build';
+      function onClick(){ try{ setAiBuildOpen(true); }catch(_){ } }
+      btn.addEventListener('click', onClick);
+      document.body.appendChild(btn);
+      return function(){ try{ btn.removeEventListener('click', onClick); }catch(_){ } try{ document.body.removeChild(btn); }catch(_){ } };
+    }catch(_){ }
+  }, []);
+  React.useEffect(function(){
+    try{
+      var nodes=document.querySelectorAll('button[title="AI Build"]');
+      nodes.forEach(function(n){ n.style.display = aiBuildOpen ? 'none' : 'inline-flex'; });
+    }catch(_){ }
+  }, [aiBuildOpen]);
   var moveFromTo = function moveFromTo(from, to) {
     setCanvas(function (prev) {
       if (from < 0 || from >= prev.length) return prev;
