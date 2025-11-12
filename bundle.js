@@ -1535,6 +1535,14 @@ function App() {
   }
 
   React.useEffect(function(){
+    try{
+      var st=document.createElement('style');
+      st.textContent='\n.cfw-ai-fab{position:fixed;left:24px;bottom:24px;width:56px;height:56px;border-radius:9999px;background:linear-gradient(135deg,#1f6feb,#9333ea);color:#fff;border:none;box-shadow:0 12px 24px rgba(0,0,0,0.35);cursor:pointer;z-index:2147483606;display:flex;align-items:center;justify-content:center;font-weight:600;transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease}\n.cfw-ai-fab:hover{transform:translateY(-2px) scale(1.03);box-shadow:0 16px 28px rgba(0,0,0,0.4)}\n.cfw-ai-fab.hidden{opacity:0;pointer-events:none}\n.cfw-ai-panel{position:fixed;left:24px;bottom:84px;width:560px;max-width:92vw;background:#0b0f19;border:1px solid #27272a;color:#e5e7eb;border-radius:14px;box-shadow:0 24px 48px rgba(0,0,0,0.45);padding:14px;transform:translateY(20px) scale(.96);opacity:0;transition:transform .22s ease,opacity .22s ease;z-index:2147483607}\n.cfw-ai-panel.open{transform:translateY(0) scale(1);opacity:1}\n.cfw-ai-title{font-weight:600;margin-bottom:8px}\n.cfw-ai-text{width:100%;height:160px;box-sizing:border-box;background:#0a1220;border:1px solid #3f3f46;color:#e5e7eb;border-radius:10px;padding:10px 12px;font-size:13px}\n.cfw-ai-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}\n.cfw-btn{background:#1f2937;color:#fff;border:none;border-radius:10px;padding:8px 12px;cursor:pointer}\n.cfw-btn.primary{background:#2563eb}';
+      document.head.appendChild(st);
+    }catch(_){ }
+  }, []);
+
+  React.useEffect(function(){
     function onKey(e){ try{ if(e && e.ctrlKey && e.altKey && (e.key||'').toLowerCase()==='b'){ setAiBuildOpen(true); } }catch(_){} }
     try{ window.addEventListener('keydown', onKey); }catch(_){ }
     return function(){ try{ window.removeEventListener('keydown', onKey); }catch(_){ } };
@@ -1542,29 +1550,26 @@ function App() {
   React.useEffect(function(){
     try{
       if(!aiBuildOpen) return;
-      var overlay=document.createElement('div'); overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:2147483607;display:flex;align-items:center;justify-content:center;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
-      var modal=document.createElement('div'); modal.style.cssText='width:600px;max-width:92vw;background:#111827;border:1px solid #27272a;color:#e5e7eb;border-radius:12px;padding:16px;';
-      var title=document.createElement('div'); title.textContent='AI Build Flow'; title.style.cssText='font-weight:600;margin-bottom:8px;';
-      var ta=document.createElement('textarea'); ta.value=String(aiBuildText||''); ta.placeholder='Describe the flow, e.g., UE initiate attach'; ta.style.cssText='width:100%;height:140px;box-sizing:border-box;background:#0b0f19;border:1px solid #3f3f46;color:#e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px;';
-      var row=document.createElement('div'); row.style.cssText='display:flex;gap:8px;justify-content:flex-end;margin-top:12px;';
-      var btnGen=document.createElement('button'); btnGen.textContent='Generate'; btnGen.style.cssText='background:#2563eb;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;';
-      var btnCancel=document.createElement('button'); btnCancel.textContent='Cancel'; btnCancel.style.cssText='background:#1f2937;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;';
-      row.appendChild(btnCancel); row.appendChild(btnGen);
-      modal.appendChild(title); modal.appendChild(ta); modal.appendChild(row); overlay.appendChild(modal);
-      document.body.appendChild(overlay);
+      var panel=document.createElement('div'); panel.className='cfw-ai-panel';
+      var title=document.createElement('div'); title.className='cfw-ai-title'; title.textContent='AI Build Flow';
+      var ta=document.createElement('textarea'); ta.className='cfw-ai-text'; ta.value=String(aiBuildText||''); ta.placeholder='Describe the flow, e.g., UE initiate attach';
+      var actions=document.createElement('div'); actions.className='cfw-ai-actions';
+      var btnCancel=document.createElement('button'); btnCancel.className='cfw-btn'; btnCancel.textContent='Cancel';
+      var btnGen=document.createElement('button'); btnGen.className='cfw-btn primary'; btnGen.textContent='Generate';
+      actions.appendChild(btnCancel); actions.appendChild(btnGen);
+      panel.appendChild(title); panel.appendChild(ta); panel.appendChild(actions);
+      document.body.appendChild(panel);
+      requestAnimationFrame(function(){ try{ panel.classList.add('open'); }catch(_){ } });
       ta.addEventListener('input', function(){ try{ setAiBuildText(ta.value); }catch(_){ } });
-      btnCancel.addEventListener('click', function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(overlay); }catch(_){ } });
+      btnCancel.addEventListener('click', function(){ try{ panel.classList.remove('open'); }catch(_){ } setTimeout(function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(panel); }catch(_){ } }, 220); });
       btnGen.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ onAiBuildFlow(); }catch(_){ } });
-      return function(){ try{ document.body.removeChild(overlay); }catch(_){ } };
+      return function(){ try{ document.body.removeChild(panel); }catch(_){ } };
     }catch(_){ }
   }, [aiBuildOpen]);
 
   React.useEffect(function(){
     try{
-      var btn=document.createElement('button');
-      btn.textContent='AI';
-      btn.style.cssText='position:fixed;right:24px;bottom:24px;width:48px;height:48px;border-radius:9999px;background:#2563eb;color:#fff;border:none;box-shadow:0 10px 20px rgba(0,0,0,0.35);cursor:pointer;z-index:2147483606;font-weight:600';
-      btn.title='AI Build';
+      var btn=document.createElement('button'); btn.className='cfw-ai-fab'; btn.textContent='AI'; btn.title='AI Build';
       function onClick(){ try{ setAiBuildOpen(true); }catch(_){ } }
       btn.addEventListener('click', onClick);
       document.body.appendChild(btn);
@@ -1573,8 +1578,8 @@ function App() {
   }, []);
   React.useEffect(function(){
     try{
-      var nodes=document.querySelectorAll('button[title="AI Build"]');
-      nodes.forEach(function(n){ n.style.display = aiBuildOpen ? 'none' : 'inline-flex'; });
+      var n=document.querySelector('.cfw-ai-fab');
+      if(n){ n.classList.toggle('hidden', !!aiBuildOpen); }
     }catch(_){ }
   }, [aiBuildOpen]);
   var moveFromTo = function moveFromTo(from, to) {
