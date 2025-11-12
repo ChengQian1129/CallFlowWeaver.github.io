@@ -1,0 +1,1823 @@
+
+<!DOCTYPE html>
+
+
+
+
+
+
+
+<html data-bs-theme="auto" lang="en">
+    <head>
+        
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <title>
+            
+                RFC 3311 - The Session Initiation Protocol (SIP) UPDATE Method
+            
+        </title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://static.ietf.org/fonts/inter/import.css" rel="stylesheet">
+        <link href="https://static.ietf.org/fonts/noto-sans-mono/import.css" rel="stylesheet">
+        
+            <link rel="stylesheet" href="https://static.ietf.org/dt/12.53.0/ietf/css/document_html_referenced.css">
+            
+            <script type="module" crossorigin="" src="https://static.ietf.org/dt/12.53.0/assets/embedded-6d911a05.js"></script>
+<link href="https://static.ietf.org/dt/12.53.0/assets/create-pinia-singleton-02fb6ed2.js" type="text/javascript" crossorigin="anonymous" rel="modulepreload" as="script" />
+<link href="https://static.ietf.org/dt/12.53.0/assets/Scrollbar-cebd6ad9.js" type="text/javascript" crossorigin="anonymous" rel="modulepreload" as="script" />
+            <script src="https://static.ietf.org/dt/12.53.0/ietf/js/document_html.js"></script>
+            <script src="https://static.ietf.org/dt/12.53.0/ietf/js/theme.js"></script>
+        
+        <link rel="alternate" type="application/atom+xml" title="Document changes" href="/feed/document-changes/rfc3311/">
+        <meta name="description"
+            
+                content="The Session Initiation Protocol (SIP) UPDATE Method (RFC 3311, )"
+            >
+        
+
+<link rel="apple-touch-icon"
+      sizes="180x180"
+      href="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor-180.png">
+<link rel="icon"
+      sizes="32x32"
+      href="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor-32.png">
+<link rel="icon"
+      sizes="16x16"
+      href="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor-16.png">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="mask-icon"
+      href="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor-mask.svg"
+      color="#ffffff">
+<meta name="msapplication-TileColor"
+      content="#ffffff">
+<meta name="theme-color"
+      content="#ffffff">
+        
+
+
+
+
+<meta property="og:title" content="RFC 3311: The Session Initiation Protocol (SIP) UPDATE Method">
+<meta property="og:url" content="https://datatracker.ietf.org/doc/html/rfc3311">
+<link rel="canonical" href="https://datatracker.ietf.org/doc/html/rfc3311">
+<meta property="og:site_name" content="IETF Datatracker">
+<meta property="og:description" content="This specification defines the new UPDATE method for the Session Initiation Protocol (SIP). UPDATE allows a client to update parameters of a session (such as the set of media streams and their codecs) but has no impact on the state of a dialog. In that sense, it is like a re-INVITE, but can be sent before the initial INVITE has completed. This makes it very useful for updating session parameters within early dialogs.">
+<meta property="og:type" content="article">
+
+<meta property="og:image" content="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-card.png">
+<meta property="og:image:alt" content="Logo of the IETF">
+<meta property="article:section" content="IETF - Internet Engineering Task Force">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+
+<meta property="article:author" content="Jonathan Rosenberg">
+
+
+
+        
+        <style>
+            
+            .diff-form .select2-selection__rendered {
+                direction: rtl;
+                text-align: left;
+            }
+        </style>
+    </head>
+    <body>
+        
+        <noscript><iframe class="status" title="Site status" src="/status/latest"></iframe></noscript>
+<div class="vue-embed" data-component="Status"></div>
+        <div class="btn-toolbar sidebar-toolbar position-fixed top-0 end-0 m-2 m-lg-3 d-print-none">
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary btn-sm me-1 dropdown-toggle d-flex align-items-center"
+                    id="bd-theme" type="button" aria-expanded="false" data-bs-toggle="dropdown"
+                    aria-label="Toggle theme">
+                        <i class="theme-icon-active bi bi-circle-half"></i>
+                </button>
+
+                <ul class="dropdown-menu" aria-labelledby="bd-theme">
+                    <li>
+                        <button type="button" class="dropdown-item d-flex align-items-center"
+                            data-bs-theme-value="light" aria-pressed="false">
+                            <i class="me-2 opacity-50 theme-icon bi bi-sun-fill"></i>
+                            Light<i class="bi bi-check2 ms-auto d-none"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item d-flex align-items-center"
+                            data-bs-theme-value="dark" aria-pressed="false">
+                            <i class="me-2 opacity-50 theme-icon bi bi-moon-stars-fill"></i>
+                            Dark<i class="bi bi-check2 ms-auto d-none"></i>
+                        </button>
+                    </li>
+                    <li>
+                        <button type="button" class="dropdown-item d-flex align-items-center active"
+                            data-bs-theme-value="auto" aria-pressed="true">
+                            <i class="me-2 opacity-50 theme-icon bi bi-circle-half"></i>
+                            Auto<i class="bi bi-check2 ms-auto d-none"></i>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm sidebar-toggle"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#sidebar"
+                    aria-expanded="true"
+                    aria-controls="sidebar"
+                    aria-label="Toggle metadata sidebar"
+                    title="Toggle metadata sidebar">
+            <i class="bi bi-arrow-bar-left sidebar-shown"></i>
+            <i class="bi bi-arrow-bar-right sidebar-collapsed"></i>
+            </button>
+        </div>
+        <nav class="navbar bg-light-subtle px-1 fixed-top d-print-none d-md-none">
+            <a class="nav-link ps-1"
+               href="/doc/rfc3311/">
+                
+                    RFC 3311
+                
+                <br class="d-sm-none">
+
+                <span class="ms-sm-3 badge rounded-pill badge-ps">
+                    
+                        Proposed Standard
+                    
+                </span>
+            </a>
+            <button class="navbar-toggler p-1"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#docinfo-collapse"
+                    aria-controls="docinfo-collapse"
+                    aria-expanded="false"
+                    aria-label="Show document information">
+                <span class="navbar-toggler-icon small"></span>
+            </button>
+            <div class="navbar-nav navbar-nav-scroll overscroll-none collapse pt-1" id="docinfo-collapse">
+                <div class="bg-light-subtle p-0">
+                    <table class="table table-sm table-borderless small">
+                        <tbody class="meta align-top">
+                            <tr>
+                                <th scope="row"></th>
+                                <th scope="row">Title</th>
+                                <td class="edit"></td>
+                                <td>The Session Initiation Protocol (SIP) UPDATE Method</td>
+                            </tr>
+                        </tbody>
+                        
+
+
+
+
+
+
+
+<tbody class="meta align-top ">
+    <tr>
+        <th scope="row">Document</th>
+        <th scope="row">Document type</th>
+        <td class="edit"></td>
+        <td>
+            
+
+
+
+
+
+<span class="text-success">RFC
+    
+    - Proposed Standard
+    
+</span>
+
+            
+                
+                    <br>October 2002
+                
+                <br>
+                
+                
+                    <a class="btn btn-sm btn-warning"
+                       title="Click to report an error in the document."
+                       href="https://www.rfc-editor.org/errata.php#reportnew"
+                       target="_blank">
+                        Report errata
+                    </a>
+                
+                
+                    <a title="Click to view IPR declarations." class="btn btn-warning btn-sm my-1" href="/ipr/search/?submit=draft&amp;id=rfc3311">IPR</a>
+                
+                
+                
+                
+                
+                
+                
+                
+                    <div>
+                        Was
+                        <a href="/doc/draft-ietf-sip-update/02/">draft-ietf-sip-update</a>
+                        (<a href="/wg/sip/about/">sip WG</a>)
+                    </div>
+                
+            
+            
+            
+                
+
+
+
+
+    
+
+
+            
+        </td>
+    </tr>
+    
+        <tr>
+            <td></td>
+            <th scope="row">Select version</th>
+            <td class="edit"></td>
+            <td>
+                
+
+
+
+    <ul class="revision-list pagination pagination-sm text-center flex-wrap my-0">
+        
+            
+            
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-ietf-sip-update-02"
+                        rel="nofollow">
+                            02
+                        </a>
+                    </li>
+                
+            
+            
+            <li class="page-item rfc active">
+                <a class="page-link"
+                href="/doc/html/rfc3311">
+                    RFC 3311
+                </a>
+            </li>
+        
+    </ul>
+
+            </td>
+        </tr>
+        
+            <tr>
+                <td></td>
+                <th scope="row">Compare versions</th>
+                <td class="edit"></td>
+                <td>
+                    
+
+
+
+<form class="form-horizontal diff-form"
+      action="https://author-tools.ietf.org/iddiff"
+      method="get"
+      target="_blank">
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="From revision"
+                    name="url1">
+                
+                    <option value="rfc3311">
+                        RFC 3311
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-02" selected>
+                        draft-ietf-sip-update-02
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-01">
+                        draft-ietf-sip-update-01
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-00">
+                        draft-ietf-sip-update-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="To revision"
+                    name="url2">
+                
+                    <option value="rfc3311" selected>
+                        RFC 3311
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-02">
+                        draft-ietf-sip-update-02
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-01">
+                        draft-ietf-sip-update-01
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-00">
+                        draft-ietf-sip-update-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--html"
+                    name="difftype">
+                Side-by-side
+            </button>
+            
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--hwdiff"
+                    name="difftype">
+                Inline
+            </button>
+
+</form>
+                </td>
+            </tr>
+        
+    
+    <tr>
+        <td></td>
+        <th scope="row">Author</th>
+        <td class="edit">
+            
+        </td>
+        <td>
+            
+            
+                <span ><a 
+           title="Datatracker profile of Jonathan Rosenberg"
+            href="/person/jdrosen@jdrosen.net" >Jonathan Rosenberg</a> <a 
+               href="mailto:jdrosen%40jdrosen.net"
+               aria-label="Compose email to jdrosen@jdrosen.net"
+               title="Compose email to jdrosen@jdrosen.net">
+                <i class="bi bi-envelope"></i></a></span>
+            
+            
+                <br>
+                <a class="btn btn-primary btn-sm mt-1" href="mailto:rfc3311@ietf.org?subject=rfc3311" title="Send email to the document authors">Email authors</a>
+            
+        </td>
+    </tr>
+    
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            RFC stream
+        </th>
+        <td class="edit">
+            
+        </td>
+        <td >
+            
+                
+                
+                    
+                        
+
+
+
+<img alt="IETF Logo"
+     class="d-lm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor-white.svg"
+        
+     
+     >
+
+<img alt="IETF Logo"
+     class="d-dm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor.svg"
+        
+     
+     >
+                    
+                
+                
+            
+        </td>
+    </tr>
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            Other formats
+        </th>
+        <td class="edit">
+        </td>
+        <td>
+            
+                
+    <div class="buttonlist">
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc3311.txt">
+            
+                <i class="bi bi-file-text"></i> txt
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc3311.html">
+            
+                <i class="bi bi-file-code"></i> html
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+            download="rfc3311.pdf"
+          
+         
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/pdfrfc/rfc3311.txt.pdf">
+            
+                <i class="bi bi-file-pdf"></i> pdf
+            
+        </a>
+        
+    
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="/doc/rfc3311/bibtex/">
+            
+                <i class="bi bi-file-ruled"></i> bibtex
+            
+        </a>
+        
+    
+</div>
+
+            
+        </td>
+    </tr>
+    
+    
+        
+            <tr>
+                <td>
+                </td>
+                <th scope="row">
+                    Additional resources
+                </th>
+                <td class="edit">
+                    
+                </td>
+                <td>
+                    
+                        
+                        
+                            
+                                <a href="https://mailarchive.ietf.org/arch/browse/sipcore?q=rfc3311 OR %22draft-ietf-sip-update%22">
+                                    Mailing list discussion
+                                </a>
+                            
+                        
+                    
+                </td>
+            </tr>
+        
+    
+</tbody>
+                        <tr>
+                            <th scope="row"></th>
+                            <th scope="row"></th>
+                            <td class="edit"></td>
+                            <td>
+                                <a class="btn btn-sm btn-warning mb-3"
+                                target="_blank"
+                                href="https://github.com/ietf-tools/datatracker/issues/new/choose">
+                                    Report a bug
+                                    <i class="bi bi-bug"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </nav>
+        <div class="row g-0">
+            <div class="col-md-9 d-flex justify-content-center lh-sm"
+                 data-bs-spy="scroll"
+                 data-bs-target="#toc-nav"
+                 data-bs-smooth-scroll="true"
+                 tabindex="0"
+                 id="content">
+                
+                    <div class="rfcmarkup">
+                        <br class="noprint">
+                        <!-- [html-validate-disable-block attr-quotes, void-style, element-permitted-content, heading-level -- FIXME: rfcmarkup/rfc2html generates HTML with issues] -->
+                        <div class="rfcmarkup"><pre>Network Working Group                                       J. Rosenberg
+Request for Comments: 3311                                   dynamicsoft
+Category: Standards Track                                 September 2002
+
+
+          <span class="h1">The Session Initiation Protocol (SIP) UPDATE Method</span>
+
+Status of this Memo
+
+   This document specifies an Internet standards track protocol for the
+   Internet community, and requests discussion and suggestions for
+   improvements.  Please refer to the current edition of the &quot;Internet
+   Official Protocol Standards&quot; (STD 1) for the standardization state
+   and status of this protocol.  Distribution of this memo is unlimited.
+
+Copyright Notice
+
+   Copyright (C) The Internet Society (2002).  All Rights Reserved.
+
+Abstract
+
+   This specification defines the new UPDATE method for the Session
+   Initiation Protocol (SIP).  UPDATE allows a client to update
+   parameters of a session (such as the set of media streams and their
+   codecs) but has no impact on the state of a dialog.  In that sense,
+   it is like a re-INVITE, but unlike re-INVITE, it can be sent before
+   the initial INVITE has been completed.  This makes it very useful for
+   updating session parameters within early dialogs.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 1]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-2" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+Table of Contents
+
+   <a href="#section-1">1</a>    Introduction ..............................................    <a href="#page-2">2</a>
+   <a href="#section-2">2</a>    Terminology ...............................................    <a href="#page-3">3</a>
+   <a href="#section-3">3</a>    Overview of Operation .....................................    <a href="#page-3">3</a>
+   <a href="#section-4">4</a>    Determining Support for this Extension ....................    <a href="#page-3">3</a>
+   <a href="#section-5">5</a>    UPDATE Handling ...........................................    <a href="#page-4">4</a>
+   <a href="#section-5.1">5.1</a>  Sending an UPDATE .........................................    <a href="#page-4">4</a>
+   <a href="#section-5.2">5.2</a>  Receiving an UPDATE .......................................    <a href="#page-5">5</a>
+   <a href="#section-5.3">5.3</a>  Processing the UPDATE Response ............................    <a href="#page-6">6</a>
+   <a href="#section-6">6</a>    Proxy Behavior ............................................    <a href="#page-7">7</a>
+   <a href="#section-7">7</a>    Definition of the UPDATE method ...........................    <a href="#page-7">7</a>
+   <a href="#section-8">8</a>    Example Call Flow .........................................    <a href="#page-7">7</a>
+   <a href="#section-9">9</a>    Security Considerations ...................................   <a href="#page-11">11</a>
+   <a href="#section-10">10</a>   IANA Considerations .......................................   <a href="#page-11">11</a>
+   <a href="#section-11">11</a>   Notice Regarding Intellectual Property Rights .............   <a href="#page-11">11</a>
+   <a href="#section-12">12</a>   Normative References ......................................   <a href="#page-11">11</a>
+   <a href="#section-13">13</a>   Acknowledgements ..........................................   <a href="#page-12">12</a>
+   <a href="#section-14">14</a>   Author&#x27;s Address ..........................................   <a href="#page-12">12</a>
+   <a href="#section-15">15</a>   Full Copyright Statement ..................................   <a href="#page-13">13</a>
+
+<span class="h2"><a class="selflink" id="section-1" href="#section-1">1</a> Introduction</span>
+
+   The Session Initiation Protocol (SIP) [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>] defines the INVITE method
+   for the initiation and modification of sessions.  However, this
+   method actually affects two important pieces of state.  It impacts
+   the session (the media streams SIP sets up) and also the dialog (the
+   state that SIP itself defines).  While this is reasonable in many
+   cases, there are important scenarios in which this coupling causes
+   complications.
+
+   The primary difficulty is when aspects of the session need to be
+   modified before the initial INVITE has been answered.  An example of
+   this situation is &quot;early media&quot;, a condition where the session is
+   established, for the purpose of conveying progress of the call, but
+   before the INVITE itself is accepted.  It is important that either
+   caller or callee be able to modify the characteristics of that
+   session (putting the early media on hold, for example), before the
+   call is answered.  However, a re-INVITE cannot be used for this
+   purpose, because the re-INVITE has an impact on the state of the
+   dialog, in addition to the session.
+
+   As a result, a solution is needed that allows the caller or callee to
+   provide updated session information before a final response to the
+   initial INVITE request is generated.  The UPDATE method, defined
+   here, fulfills that need.  It can be sent by a UA within a dialog
+   (early or confirmed) to update session parameters without impacting
+   the dialog state itself.
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 2]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-3" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+<span class="h2"><a class="selflink" id="section-2" href="#section-2">2</a> Terminology</span>
+
+   In this document, the key words &quot;MUST&quot;, &quot;MUST NOT&quot;, &quot;REQUIRED&quot;,
+   &quot;SHALL&quot;, &quot;SHALL NOT&quot;, &quot;SHOULD&quot;, &quot;SHOULD NOT&quot;, &quot;RECOMMENDED&quot;, &quot;MAY&quot;,
+   and &quot;OPTIONAL&quot; are to be interpreted as described in <a href="/doc/html/bcp14">BCP 14</a>, <a href="/doc/html/rfc2119">RFC 2119</a>
+   [<a href="#ref-2" title="&quot;Key words for use in RFCs to Indicate Requirement Levels&quot;">2</a>] and indicate requirement levels for compliant SIP
+   implementations.
+
+<span class="h2"><a class="selflink" id="section-3" href="#section-3">3</a> Overview of Operation</span>
+
+   Operation of this extension is straightforward.  The caller begins
+   with an INVITE transaction, which proceeds normally.  Once a dialog
+   is established, either early or confirmed, the caller can generate an
+   UPDATE method that contains an SDP offer [<a href="#ref-3" title="&quot;An Offer/Answer Model with the Session Description Protocol (SDP)&quot;">3</a>] for the purposes of
+   updating the session.  The response to the UPDATE method contains the
+   answer.  Similarly, once a dialog is established, the callee can send
+   an UPDATE with an offer, and the caller places its answer in the 2xx
+   to the UPDATE.  The Allow header field is used to indicate support
+   for the UPDATE method.  There are additional constraints on when
+   UPDATE can be used, based on the restrictions of the offer/answer
+   model.
+
+<span class="h2"><a class="selflink" id="section-4" href="#section-4">4</a> Determining Support for this Extension</span>
+
+   The initiation of a session operates as specified in <a href="/doc/html/rfc3261">RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>].
+   However, a UAC compliant to this specification SHOULD also include an
+   Allow header field in the INVITE request, listing the method UPDATE,
+   to indicate its ability to receive an UPDATE request.
+
+   When a UAS compliant to this specification receives an INVITE request
+   for a new dialog, and generates a reliable provisional response
+   containing SDP, that response SHOULD contain an Allow header field
+   that lists the UPDATE method.  This informs the caller that the
+   callee is capable of receiving an UPDATE request at any time.  An
+   unreliable provisional response MAY contain an Allow header field
+   listing the UPDATE method, and a 2xx response SHOULD contain an Allow
+   header field listing the UPDATE method.
+
+   Responses are processed normally as per <a href="/doc/html/rfc3261">RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>], and in the case
+   of reliable provisional responses, according to [<a href="#ref-4" title="&quot;Reliability of Provisional Responses in the Session Initiation Protocol (SIP)&quot;">4</a>].  It is important
+   to note that a reliable provisional response will always create an
+   early dialog at the UAC.  Creation of this dialog is necessary in
+   order to receive UPDATE requests from the callee.
+
+   If the response contains an Allow header field containing the value
+   &quot;UPDATE&quot;, the UAC knows that the callee supports UPDATE, and the UAC
+   is allowed to follow the procedures of <a href="#section-5.1">Section 5.1</a>.
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 3]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-4" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+<span class="h2"><a class="selflink" id="section-5" href="#section-5">5</a> UPDATE Handling</span>
+
+<span class="h3"><a class="selflink" id="section-5.1" href="#section-5.1">5.1</a> Sending an UPDATE</span>
+
+   The UPDATE request is constructed as would any other request within
+   an existing dialog, as described in <a href="/doc/html/rfc3261#section-12.2.1">Section&nbsp;12.2.1 of RFC 3261</a>.  It
+   MAY be sent for both early and confirmed dialogs, and MAY be sent by
+   either caller or callee.  Although UPDATE can be used on confirmed
+   dialogs, it is RECOMMENDED that a re-INVITE be used instead.  This is
+   because an UPDATE needs to be answered immediately, ruling out the
+   possibility of user approval.  Such approval will frequently be
+   needed, and is possible with a re-INVITE.
+
+   The UAC MAY add optional headers for the UPDATE request, as defined
+   in Tables 1 and 2.
+
+   UPDATE is a target refresh request. As specified in <a href="/doc/html/rfc3261">RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>],
+   this means that it can update the remote target of a dialog. If a UA
+   uses an UPDATE request or response to modify the remote target while
+   an INVITE transaction is in progress, and it is a UAS for that INVITE
+   transaction, it MUST place the same value into the Contact header
+   field of the 2xx to the INVITE that it placed into the UPDATE request
+   or response.
+
+   The rules for inclusion of offers and answers in SIP messages as
+   defined in <a href="/doc/html/rfc3261#section-13.2.1">Section&nbsp;13.2.1 of RFC 3261</a> still apply.  These rules exist
+   to guarantee a consistent view of the session state.  This means
+   that, for the caller:
+
+      o  If the UPDATE is being sent before completion of the initial
+         INVITE transaction, and the initial INVITE contained an offer,
+         the UPDATE can contain an offer if the callee generated an
+         answer in a reliable provisional response, and the caller has
+         received answers to any other offers it sent in either PRACK or
+         UPDATE, and has generated answers for any offers it received in
+         an UPDATE from the callee.
+
+      o  If the UPDATE is being sent before completion of the initial
+         INVITE transaction, and the initial INVITE did not contain an
+         offer, the UPDATE can contain an offer if the callee generated
+         an offer in a reliable provisional response, and the UAC
+         generated an answer in the corresponding PRACK.  Of course, it
+         can&#x27;t send an UPDATE if it has not received answers to any
+         other offers it sent in either PRACK or UPDATE, or has not
+         generated answers for any other offers it received in an UPDATE
+         from the callee.
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 4]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-5" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+      o  If the UPDATE is being sent after the completion of the initial
+         INVITE transaction, it cannot contain an offer if the caller
+         has generated or received offers in a re-INVITE or UPDATE which
+         have not been answered.
+
+   and for the callee:
+
+      o  If the UPDATE is being sent before the completion of the INVITE
+         transaction, and the initial INVITE contained an offer, the
+         UPDATE cannot be sent with an offer unless the callee has
+         generated an answer in a reliable provisional response, has
+         received a PRACK for that reliable provisional response, has
+         not received any requests (PRACK or UPDATE) with offers that it
+         has not answered, and has not sent any UPDATE requests
+         containing offers that have not been answered.
+
+      o  If the UPDATE is being sent before completion of the INVITE
+         transaction, and the initial INVITE did not contain an offer,
+         the UPDATE cannot be sent with an offer unless the callee has
+         sent an offer in a reliable provisional response, received an
+         answer in a PRACK, and has not received any UPDATE requests
+         with offers that it has not answered, and has not sent any
+         UPDATE requests containing offers that have not been answered.
+
+      o  If the UPDATE is being sent after the completion of the initial
+         INVITE transaction, it cannot be sent with an offer if the
+         callee has generated or received offers in a re-INVITE or
+         UPDATE which have not been answered.
+
+<span class="h3"><a class="selflink" id="section-5.2" href="#section-5.2">5.2</a> Receiving an UPDATE</span>
+
+   The UPDATE is processed as any other mid-dialog target refresh
+   request, as described in <a href="/doc/html/rfc3261#section-12.2.2">Section&nbsp;12.2.2 of RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>].  If the
+   request is generally acceptable, processing continues as described
+   below.  This processing is nearly identical to that of <a href="/doc/html/rfc3261#section-14.2">Section&nbsp;14.2
+   of RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>], but generalized for the case of UPDATE.
+
+   A UAS that receives an UPDATE before it has generated a final
+   response to a previous UPDATE on the same dialog MUST return a 500
+   response to the new UPDATE, and MUST include a Retry-After header
+   field with a randomly chosen value between 0 and 10 seconds.
+
+   If an UPDATE is received that contains an offer, and the UAS has
+   generated an offer (in an UPDATE, PRACK or INVITE) to which it has
+   not yet received an answer, the UAS MUST reject the UPDATE with a 491
+   response.  Similarly, if an UPDATE is received that contains an
+   offer, and the UAS has received an offer (in an UPDATE, PRACK, or
+   INVITE) to which it has not yet generated an answer, the UAS MUST
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 5]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-6" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+   reject the UPDATE with a 500 response, and MUST include a Retry-After
+   header field with a randomly chosen value between 0 and 10 seconds.
+
+   If a UA receives an UPDATE for an existing dialog, it MUST check any
+   version identifiers in the session description or, if there are no
+   version identifiers, the content of the session description to see if
+   it has changed.  If the session description has changed, the UAS MUST
+   adjust the session parameters accordingly and generate an answer in
+   the 2xx response.  However, unlike a re-INVITE, the UPDATE MUST be
+   responded to promptly, and therefore the user cannot generally be
+   prompted to approve the session changes.  If the UAS cannot change
+   the session parameters without prompting the user, it SHOULD reject
+   the request with a 504 response.  If the new session description is
+   not acceptable, the UAS can reject it by returning a 488 (Not
+   Acceptable Here) response for the UPDATE.  This response SHOULD
+   include a Warning header field.
+
+<span class="h3"><a class="selflink" id="section-5.3" href="#section-5.3">5.3</a> Processing the UPDATE Response</span>
+
+   Processing of the UPDATE response at the UAC follows the rules in
+   <a href="/doc/html/rfc3261#section-12.2.1.2">Section&nbsp;12.2.1.2 of RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>] for a target refresh request.  Once
+   that processing is complete, it continues as specified below.  This
+   processing is nearly identical to the processing of <a href="/doc/html/rfc3261#section-14.1">Section&nbsp;14.1 of
+   RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>], but generalized for UPDATE.
+
+   If a UA receives a non-2xx final response to a UPDATE, the session
+   parameters MUST remain unchanged, as if no UPDATE had been issued.
+   Note that, as stated in <a href="/doc/html/rfc3261#section-12.2.1">Section&nbsp;12.2.1 of RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>], if the non-
+   2xx final response is a 481 (Call/Transaction Does Not Exist), or a
+   408 (Request Timeout), or no response at all is received for the
+   UPDATE (that is, a timeout is returned by the UPDATE client
+   transaction), the UAC will terminate the dialog.
+
+   If a UAC receives a 491 response to a UPDATE, it SHOULD start a timer
+   with a value T chosen as follows:
+
+      1. If the UAC is the owner of the Call-ID of the dialog ID
+         (meaning it generated the value), T has a randomly chosen value
+         between 2.1 and 4 seconds in units of 10 ms.
+
+      2. If the UAC is not the owner of the Call-ID of the dialog ID, T
+         has a randomly chosen value between 0 and 2 seconds in units of
+         10 ms.
+
+   When the timer fires, the UAC SHOULD attempt the UPDATE once more, if
+   it still desires for that session modification to take place.  For
+   example, if the call was already hung up with a BYE, the UPDATE would
+   not take place.
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 6]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-7" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+<span class="h2"><a class="selflink" id="section-6" href="#section-6">6</a> Proxy Behavior</span>
+
+   Proxy processing of the UPDATE request is identical to any other
+   non-INVITE request.
+
+<span class="h2"><a class="selflink" id="section-7" href="#section-7">7</a> Definition of the UPDATE method</span>
+
+   The semantics of the UPDATE method are described in detail above.
+   This extension adds another value to the Method BNF described in <a href="/doc/html/rfc3261">RFC</a>
+   <a href="/doc/html/rfc3261">3261</a>:
+
+         UPDATEm  =  %x55.50.44.41.54.45 ; UPDATE in caps
+         Method   =  INVITEm / ACKm / OPTIONSm / BYEm
+                     / CANCELm / REGISTERm / UPDATEm
+                     / extension-method
+
+   Table 1 extends Table 2 of <a href="/doc/html/rfc3261">RFC 3261</a> for the UPDATE method.
+
+   Table 2 updates Table 3 of <a href="/doc/html/rfc3261">RFC 3261</a> for the UPDATE method.
+
+<span class="h2"><a class="selflink" id="section-8" href="#section-8">8</a> Example Call Flow</span>
+
+   This section presents an example call flow using the UPDATE method.
+   The flow is shown in Figure 1.  The caller sends an initial INVITE
+   (1) which contains an offer.  The callee generates a 180 response (2)
+   with an answer to that offer.  With the completion of an offer/answer
+   exchange, the session is established, although the dialog is still in
+   the early state.  The caller generates a PRACK (3) to acknowledge the
+   180, and the PRACK is answered with a 200 OK (4).  The caller decides
+   to update some aspect of the session - to put it on hold, for
+   example.  So, they generate an UPDATE request (5) with a new offer.
+   This offer is answered in the 200 response to the UPDATE (6).
+   Shortly thereafter, the callee decides to update some aspect of the
+   session, so it generates an UPDATE request (7) with an offer, and the
+   answer is sent in the 200 response (8).  Finally, the callee answers
+   the call, resulting in a 200 OK response to the INVITE (9), and then
+   an ACK (10).  Neither the 200 OK to the INVITE, nor the ACK, will
+   contain SDP.
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 7]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-8" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+               Header field          where   proxy  UPDATE
+               ____________________________________________
+               Accept                  R              o
+               Accept                 2xx             o
+               Accept                 415             c
+               Accept-Encoding         R              o
+               Accept-Encoding        2xx             o
+               Accept-Encoding        415             c
+               Accept-Language         R              o
+               Accept-Language        2xx             o
+               Accept-Language        415             c
+               Alert-Info                             -
+               Allow                   R              o
+               Allow                  2xx             o
+               Allow                   r              o
+               Allow                  405             m
+               Allow-Events           (1)             -
+               Authentication-Info    2xx             o
+               Authorization           R              o
+               Call-ID                 c       r      m
+               Call-Info                      ar      o
+               Contact                 R              m
+               Contact                1xx             o
+               Contact                2xx             m
+               Contact                3xx      d      o
+               Contact                485             o
+               Content-Disposition                    o
+               Content-Encoding                       o
+               Content-Language                       o
+               Content-Length                 ar      t
+               Content-Type                           *
+               CSeq                    c       r      m
+               Date                            a      o
+               Error-Info           300-699    a      o
+               Event                  (1)             -
+               Expires                                -
+               From                    c       r      m
+               In-Reply-To                            -
+               Max-Forwards            R      amr     m
+               Min-Expires                            -
+               MIME-Version                           o
+               Organization                   ar      o
+
+   Table 1: Summary of header fields, A--O ; (1) defined in [<a href="#ref-5" title="&quot;Session Initiation Protocol (SIP)-Specific Event Notification&quot;">5</a>].
+
+
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 8]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-9" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+           Header field              where       proxy  UPDATE
+           ____________________________________________________
+           Priority                                       -
+           Proxy-Authenticate         407         ar      m
+           Proxy-Authenticate         401         ar      o
+           Proxy-Authorization         R          dr      o
+           Proxy-Require               R          ar      o
+           RAck                        R                  -
+           Record-Route                R          ar      o
+           Record-Route             2xx,18x       mr      o
+           Reply-To                                       -
+           Require                                ar      c
+           Retry-After          404,413,480,486           o
+                                    500,503               o
+                                    600,603               o
+           Route                       R          adr     c
+           RSeq                        -                  -
+           Server                      r                  o
+           Subject                     -                  -
+           Subscription-State         (1)                 -
+           Supported                   R                  o
+           Supported                  2xx                 o
+           Timestamp                                      o
+           To                          c           r      m
+           Unsupported                420                 m
+           User-Agent                                     o
+           Via                         R          amr     m
+           Via                        rc          dr      m
+           Warning                     r                  o
+           WWW-Authenticate           401         ar      m
+           WWW-Authenticate           407         ar      o
+
+
+   Table 2: Summary of header fields, P--Z.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                     [Page 9]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-10" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+                Caller                        Callee
+                   |                             |
+                   |                             |
+                   |(1) INVITE with offer 1      |
+                   |----------------------------&gt;|
+                   |                             |
+                   |                             |
+                   |(2) 180 with answer 1        |
+                   |&lt;----------------------------|
+                   |                             |
+                   |                             |
+                   |(3) PRACK                    |
+                   |----------------------------&gt;|
+                   |                             |
+                   |                             |
+                   |(4) 200 PRACK                |
+                   |&lt;----------------------------|
+                   |                             |
+                   |                             |
+                   |(5) UPDATE with offer 2      |
+                   |----------------------------&gt;|
+                   |                             |
+                   |                             |
+                   |(6) 200 UPDATE with answer 2 |
+                   |&lt;----------------------------|
+                   |                             |
+                   |                             |
+                   |(7) UPDATE with offer 3      |
+                   |&lt;----------------------------|
+                   |                             |
+                   |                             |
+                   |(8) 200 UPDATE with answer 3 |
+                   |----------------------------&gt;|
+                   |                             |
+                   |                             |
+                   |(9) 200 INVITE               |
+                   |&lt;----------------------------|
+                   |                             |
+                   |                             |
+                   |(10) ACK                     |
+                   |----------------------------&gt;|
+                   |                             |
+                   |                             |
+                   |                             |
+                   |                             |
+
+                     Figure 1: UPDATE Call Flow
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                    [Page 10]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-11" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+<span class="h2"><a class="selflink" id="section-9" href="#section-9">9</a> Security Considerations</span>
+
+   The security considerations for UPDATE are identical to those for
+   re-INVITE.  It is important that the UPDATE be integrity protected
+   and authenticated as coming from the same source as the entity on the
+   other end of the dialog.  <a href="/doc/html/rfc3261">RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>] discusses security mechanisms
+   for achieving these functions.
+
+<span class="h2"><a class="selflink" id="section-10" href="#section-10">10</a> IANA Considerations</span>
+
+   As per <a href="/doc/html/rfc3261#section-27.4">Section&nbsp;27.4 of RFC 3261</a> [<a href="#ref-1" title="&quot;SIP: Session Initiation Protocol&quot;">1</a>], this specification serves as a
+   registration for the SIP UPDATE request method.  The information to
+   be added to the registry is:
+
+      <a href="/doc/html/rfc3311">RFC 3311</a>: This specification serves as the RFC for registering
+                the UPDATE request method.
+
+      Method Name: UPDATE
+
+      Reason Phrase: Not applicable.
+
+<span class="h2"><a class="selflink" id="section-11" href="#section-11">11</a> Notice Regarding Intellectual Property Rights</span>
+
+      The IETF has been notified of intellectual property rights claimed
+      in regard to some or all of the specification contained in this
+      document.  For more information consult the online list of claimed
+      rights.
+
+<span class="h2"><a class="selflink" id="section-12" href="#section-12">12</a> Normative References</span>
+
+   [<a id="ref-1">1</a>] Rosenberg, J., Schulzrinne, H., Camarillo, G., Johnston, A.,
+       Peterson, J., Sparks, R., Handley, M. and E. Schooler, &quot;SIP:
+       Session Initiation Protocol&quot;, <a href="/doc/html/rfc3261">RFC 3261</a>, June 2002.
+
+   [<a id="ref-2">2</a>] Bradner, S., &quot;Key words for use in RFCs to Indicate Requirement
+       Levels&quot;, <a href="/doc/html/bcp14">BCP 14</a>, <a href="/doc/html/rfc2119">RFC 2119</a>, March 1997.
+
+   [<a id="ref-3">3</a>] Rosenberg, J. and H. Schulzrinne, &quot;An Offer/Answer Model with the
+       Session Description Protocol (SDP)&quot;, <a href="/doc/html/rfc3264">RFC 3264</a>, June 2002.
+
+   [<a id="ref-4">4</a>] Rosenberg, J. and H. Schulzrinne, &quot;Reliability of Provisional
+       Responses in the Session Initiation Protocol (SIP)&quot;, <a href="/doc/html/rfc3262">RFC 3262</a>,
+       June 2002.
+
+   [<a id="ref-5">5</a>] Roach, A.B., &quot;Session Initiation Protocol (SIP)-Specific Event
+       Notification&quot;, <a href="/doc/html/rfc3265">RFC 3265</a>, June 2002.
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                    [Page 11]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-12" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+<span class="h2"><a class="selflink" id="section-13" href="#section-13">13</a> Acknowledgements</span>
+
+   The author would like to thank Jo Hornsby, Markus Isomaki, Rohan
+   Mahy, and Bob Penfield for their comments.
+
+<span class="h2"><a class="selflink" id="section-14" href="#section-14">14</a> Author&#x27;s Address</span>
+
+   Jonathan Rosenberg
+   dynamicsoft
+   72 Eagle Rock Avenue
+   First Floor
+   East Hanover, NJ 07936
+
+   EMail: jdrosen@dynamicsoft.com
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<span class="grey">Rosenberg                   Standards Track                    [Page 12]</span></pre>
+<hr class='noprint'/><!--NewPage--><pre class='newpage'><span id="page-13" ></span>
+<span class="grey"><a href="/doc/html/rfc3311">RFC 3311</a>                   SIP UPDATE Method              September 2002</span>
+
+
+<span class="h2"><a class="selflink" id="section-15" href="#section-15">15</a> Full Copyright Statement</span>
+
+   Copyright (C) The Internet Society (2002).  All Rights Reserved.
+
+   This document and translations of it may be copied and furnished to
+   others, and derivative works that comment on or otherwise explain it
+   or assist in its implementation may be prepared, copied, published
+   and distributed, in whole or in part, without restriction of any
+   kind, provided that the above copyright notice and this paragraph are
+   included on all such copies and derivative works.  However, this
+   document itself may not be modified in any way, such as by removing
+   the copyright notice or references to the Internet Society or other
+   Internet organizations, except as needed for the purpose of
+   developing Internet standards in which case the procedures for
+   copyrights defined in the Internet Standards process must be
+   followed, or as required to translate it into languages other than
+   English.
+
+   The limited permissions granted above are perpetual and will not be
+   revoked by the Internet Society or its successors or assigns.
+
+   This document and the information contained herein is provided on an
+   &quot;AS IS&quot; basis and THE INTERNET SOCIETY AND THE INTERNET ENGINEERING
+   TASK FORCE DISCLAIMS ALL WARRANTIES, EXPRESS OR IMPLIED, INCLUDING
+   BUT NOT LIMITED TO ANY WARRANTY THAT THE USE OF THE INFORMATION
+   HEREIN WILL NOT INFRINGE ANY RIGHTS OR ANY IMPLIED WARRANTIES OF
+   MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+
+Acknowledgement
+
+   Funding for the RFC Editor function is currently provided by the
+   Internet Society.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Rosenberg                   Standards Track                    [Page 13]
+</pre></div>
+                    </div>
+                
+            </div>
+            <div class="d-print-none col-md-3 bg-light-subtle collapse show" id="sidebar">
+                <div class="position-fixed border-start sidebar overflow-scroll overscroll-none no-scrollbar">
+                    <div class="d-flex flex-column vh-100 pt-2 pt-lg-3 ps-3 pl-md-2 pl-lg-3">
+                        <div>
+                            <a class="btn btn-primary btn-sm" href="/doc/rfc3311/">Datatracker</a>
+                            <p class="fw-bold pt-2">
+                                
+                                    RFC 3311
+                                
+                                <br>
+                                
+
+
+
+
+
+<span class="text-success">RFC
+    
+    - Proposed Standard
+    
+</span>
+
+                            </p>
+                        </div>
+                        
+                        <ul class="nav nav-tabs nav-fill small me-2" role="tablist">
+                            <li class="nav-item" role="presentation" title="Document information">
+                                <button class="nav-link px-2"
+                                        id="docinfo-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#docinfo-tab-pane"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="docinfo-tab-pane"
+                                        aria-selected="true">
+                                    <i class="bi bi-info-circle"></i><span class="d-none d-md-block d-xl-inline ms-xl-1">Info</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation" title="Table of contents">
+                                <button class="nav-link px-2"
+                                        id="toc-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#toc-tab-pane"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="toc-tab-pane"
+                                        aria-selected="false">
+                                    <i class="bi bi-list-ol"></i><span class="d-none d-md-block d-xl-inline ms-xl-1">Contents</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation" title="Preferences">
+                                <button class="nav-link px-2"
+                                        id="pref-tab"
+                                        data-bs-toggle="tab"
+                                        data-bs-target="#pref-tab-pane"
+                                        type="button"
+                                        role="tab"
+                                        aria-controls="pref-tab-pane"
+                                        aria-selected="false">
+                                    <i class="bi bi-gear"></i><span class="d-none d-md-block d-xl-inline ms-xl-1">Prefs</span>
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="overflow-auto tab-content pt-2 me-2">
+                            <div class="tab-pane"
+                                 id="docinfo-tab-pane"
+                                 role="tabpanel"
+                                 aria-labelledby="docinfo-tab"
+                                 tabindex="0">
+                                <table class="table table-sm table-borderless">
+                                    
+
+
+
+
+
+
+
+<tbody class="meta align-top ">
+    <tr>
+        <th scope="row">Document</th>
+        <th scope="row">Document type</th>
+        <td class="edit"></td>
+        <td>
+            
+
+
+
+
+
+<span class="text-success">RFC
+    
+    - Proposed Standard
+    
+</span>
+
+            
+                
+                    <br>October 2002
+                
+                <br>
+                
+                
+                    <a class="btn btn-sm btn-warning"
+                       title="Click to report an error in the document."
+                       href="https://www.rfc-editor.org/errata.php#reportnew"
+                       target="_blank">
+                        Report errata
+                    </a>
+                
+                
+                    <a title="Click to view IPR declarations." class="btn btn-warning btn-sm my-1" href="/ipr/search/?submit=draft&amp;id=rfc3311">IPR</a>
+                
+                
+                
+                
+                
+                
+                
+                
+                    <div>
+                        Was
+                        <a href="/doc/draft-ietf-sip-update/02/">draft-ietf-sip-update</a>
+                        (<a href="/wg/sip/about/">sip WG</a>)
+                    </div>
+                
+            
+            
+            
+                
+
+
+
+
+    
+
+
+            
+        </td>
+    </tr>
+    
+        <tr>
+            <td></td>
+            <th scope="row">Select version</th>
+            <td class="edit"></td>
+            <td>
+                
+
+
+
+    <ul class="revision-list pagination pagination-sm text-center flex-wrap my-0">
+        
+            
+            
+                
+                    <li class="page-item">
+                        <a class="page-link"
+                        href="/doc/html/draft-ietf-sip-update-02"
+                        rel="nofollow">
+                            02
+                        </a>
+                    </li>
+                
+            
+            
+            <li class="page-item rfc active">
+                <a class="page-link"
+                href="/doc/html/rfc3311">
+                    RFC 3311
+                </a>
+            </li>
+        
+    </ul>
+
+            </td>
+        </tr>
+        
+            <tr>
+                <td></td>
+                <th scope="row">Compare versions</th>
+                <td class="edit"></td>
+                <td>
+                    
+
+
+
+<form class="form-horizontal diff-form"
+      action="https://author-tools.ietf.org/iddiff"
+      method="get"
+      target="_blank">
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="From revision"
+                    name="url1">
+                
+                    <option value="rfc3311">
+                        RFC 3311
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-02" selected>
+                        draft-ietf-sip-update-02
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-01">
+                        draft-ietf-sip-update-01
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-00">
+                        draft-ietf-sip-update-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <select class="form-select form-select-sm mb-1 select2-field"
+                    data-max-entries="1"
+                    data-width="resolve"
+                    data-allow-clear="false"
+                    data-minimum-input-length="0"
+                    aria-label="To revision"
+                    name="url2">
+                
+                    <option value="rfc3311" selected>
+                        RFC 3311
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-02">
+                        draft-ietf-sip-update-02
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-01">
+                        draft-ietf-sip-update-01
+                        
+                    </option>
+                
+                    <option value="draft-ietf-sip-update-00">
+                        draft-ietf-sip-update-00
+                        
+                    </option>
+                
+                
+            </select>
+
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--html"
+                    name="difftype">
+                Side-by-side
+            </button>
+            
+            <button type="submit"
+                    class="btn btn-primary btn-sm"
+                    value="--hwdiff"
+                    name="difftype">
+                Inline
+            </button>
+
+</form>
+                </td>
+            </tr>
+        
+    
+    <tr>
+        <td></td>
+        <th scope="row">Author</th>
+        <td class="edit">
+            
+        </td>
+        <td>
+            
+            
+                <span ><a 
+           title="Datatracker profile of Jonathan Rosenberg"
+            href="/person/jdrosen@jdrosen.net" >Jonathan Rosenberg</a> <a 
+               href="mailto:jdrosen%40jdrosen.net"
+               aria-label="Compose email to jdrosen@jdrosen.net"
+               title="Compose email to jdrosen@jdrosen.net">
+                <i class="bi bi-envelope"></i></a></span>
+            
+            
+                <br>
+                <a class="btn btn-primary btn-sm mt-1" href="mailto:rfc3311@ietf.org?subject=rfc3311" title="Send email to the document authors">Email authors</a>
+            
+        </td>
+    </tr>
+    
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            RFC stream
+        </th>
+        <td class="edit">
+            
+        </td>
+        <td >
+            
+                
+                
+                    
+                        
+
+
+
+<img alt="IETF Logo"
+     class="d-lm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor-white.svg"
+        
+     
+     >
+
+<img alt="IETF Logo"
+     class="d-dm-none w-25 mt-1"
+     
+     
+        
+             src="https://static.ietf.org/dt/12.53.0/ietf/images/ietf-logo-nor.svg"
+        
+     
+     >
+                    
+                
+                
+            
+        </td>
+    </tr>
+    
+    <tr>
+        <td></td>
+        <th scope="row">
+            Other formats
+        </th>
+        <td class="edit">
+        </td>
+        <td>
+            
+                
+    <div class="buttonlist">
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc3311.txt">
+            
+                <i class="bi bi-file-text"></i> txt
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/rfc3311.html">
+            
+                <i class="bi bi-file-code"></i> html
+            
+        </a>
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+            download="rfc3311.pdf"
+          
+         
+          target="_blank"
+          href="https://www.rfc-editor.org/rfc/pdfrfc/rfc3311.txt.pdf">
+            
+                <i class="bi bi-file-pdf"></i> pdf
+            
+        </a>
+        
+    
+        
+    
+        
+        <a class="btn btn-primary btn-sm"
+          
+          target="_blank"
+          href="/doc/rfc3311/bibtex/">
+            
+                <i class="bi bi-file-ruled"></i> bibtex
+            
+        </a>
+        
+    
+</div>
+
+            
+        </td>
+    </tr>
+    
+    
+        
+            <tr>
+                <td>
+                </td>
+                <th scope="row">
+                    Additional resources
+                </th>
+                <td class="edit">
+                    
+                </td>
+                <td>
+                    
+                        
+                        
+                            
+                                <a href="https://mailarchive.ietf.org/arch/browse/sipcore?q=rfc3311 OR %22draft-ietf-sip-update%22">
+                                    Mailing list discussion
+                                </a>
+                            
+                        
+                    
+                </td>
+            </tr>
+        
+    
+</tbody>
+                                </table>
+                                <a class="btn btn-sm btn-warning mb-3"
+                                target="_blank"
+                                href="https://github.com/ietf-tools/datatracker/issues/new/choose">
+                                    Report a datatracker bug
+                                    <i class="bi bi-bug"></i>
+                                </a>
+                            </div>
+                            <div class="tab-pane mb-5"
+                                 id="toc-tab-pane"
+                                 role="tabpanel"
+                                 aria-labelledby="toc-tab"
+                                 tabindex="0">
+                                <nav class="nav nav-pills flex-column small" id="toc-nav">
+                                </nav>
+                            </div>
+                            <div class="tab-pane mb-5 small"
+                                 id="pref-tab-pane"
+                                 role="tabpanel"
+                                 aria-labelledby="pref-tab"
+                                 tabindex="0">
+                                <label class="form-label fw-bold mb-2">Show sidebar by default</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="sidebar" id="on-radio">
+                                    <label class="btn btn-outline-primary" for="on-radio">Yes</label>
+                                    <input type="radio" class="btn-check" name="sidebar" id="off-radio">
+                                    <label class="btn btn-outline-primary" for="off-radio">No</label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2">Tab to show by default</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="deftab" id="docinfo-radio">
+                                    <label class="btn btn-outline-primary" for="docinfo-radio">
+                                        <i class="bi bi-info-circle me-1"></i>Info
+                                    </label>
+                                    <input type="radio" class="btn-check" name="deftab" id="toc-radio">
+                                    <label class="btn btn-outline-primary" for="toc-radio">
+                                        <i class="bi bi-list-ol me-1"></i>Contents
+                                    </label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2">HTMLization configuration</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="htmlconf" id="txt-radio">
+                                    <label class="btn btn-outline-primary" for="txt-radio" title="This is the traditional HTMLization method.">
+                                        <i class="bi bi-badge-sd me-1"></i>HTMLize the plaintext
+                                    </label>
+                                    <input type="radio" class="btn-check" name="htmlconf" id="html-radio">
+                                    <label class="btn btn-outline-primary" for="html-radio" title="This is the modern HTMLization method.">
+                                        <i class="bi bi-badge-hd me-1"></i>Plaintextify the HTML
+                                    </label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2" for="ptsize">Maximum font size</label>
+                                <input type="range" class="form-range" min="7" max="16" id="ptsize" oninput="ptdemo.value = ptsize.value">
+                                <label class="form-label fw-bold mt-4 mb-2">Page dependencies</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="pagedeps" id="inline-radio">
+                                    <label class="btn btn-outline-primary" for="inline-radio" title="Generate larger, standalone web pages that do not require network access to render.">
+                                        <i class="bi bi-box me-1"></i>Inline
+                                    </label>
+                                    <input type="radio" class="btn-check" name="pagedeps" id="reference-radio">
+                                    <label class="btn btn-outline-primary" for="reference-radio" title="Generate regular web pages that require network access to render.">
+                                        <i class="bi bi-link-45deg me-1"></i>Reference
+                                    </label>
+                                </div>
+                                <label class="form-label fw-bold mt-4 mb-2">Citation links</label>
+                                <div class="btn-group-vertical btn-group-sm d-flex" role="group">
+                                    <input type="radio" class="btn-check" name="reflinks" id="refsection-radio">
+                                    <label class="btn btn-outline-primary" for="refsection-radio" title="Citation links go to the reference section.">
+                                        <i class="bi bi-arrow-clockwise"></i> Go to reference section
+                                    </label>
+                                    <input type="radio" class="btn-check" name="reflinks" id="citation-radio">
+                                    <label class="btn btn-outline-primary" for="citation-radio" title="Citation links go directly to the cited document.">
+                                        <i class="bi bi-link-45deg me-1"></i>Go to linked document
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+<script>
+  var _paq = window._paq || [];
+  
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="//analytics.ietf.org/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', 7]);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.type='text/javascript'; g.async=true; g.defer=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<noscript><p><img src="//analytics.ietf.org/matomo.php?idsite=7" style="border:0;" alt="" /></p></noscript>
+
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99d46f236c2ed767',t:'MTc2MjkzMzc4MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

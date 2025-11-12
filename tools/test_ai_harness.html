@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Harness · CallFlowWeaver</title>
+  <style>
+    body{margin:0;background:#0b0b0f;color:#e5e7eb;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    .panel{padding:12px;border-right:1px solid #27272a;width:380px;box-sizing:border-box}
+    .row{margin-bottom:10px}
+    .row label{display:block;font-size:12px;color:#a1a1aa;margin-bottom:6px}
+    .row input,.row textarea{width:100%;box-sizing:border-box;background:#111827;border:1px solid #3f3f46;color:#e5e7eb;border-radius:8px;padding:8px 10px;font-size:13px}
+    .btn{display:inline-flex;align-items:center;gap:8px;background:#1f2937;color:#fff;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;margin-right:8px}
+    .wrap{display:flex;height:100vh}
+    iframe{flex:1;border:0}
+    .muted{font-size:12px;color:#94a3b8}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#111827;color:#cbd5e1;font-size:12px;margin-left:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="panel">
+      <div class="row"><label>API Endpoint</label><input id="apiUrl" value="https://x666.me/v1/chat/completions" /></div>
+      <div class="row"><label>API Key</label><input id="apiKey" value="" placeholder="sk-..." /></div>
+      <div class="row"><label>Model</label><input id="apiModel" value="gemini-2.5-pro" /></div>
+      <div class="row"><label>Prompt</label><textarea id="prompt" rows="5" placeholder="e.g., generate a registration flow using current truth"></textarea></div>
+      <div class="row">
+        <label class="muted">Mode</label>
+        <label><input type="checkbox" id="openai" checked /> OpenAI Compatible</label>
+        <label style="margin-left:12px"><input type="checkbox" id="stream" checked /> Streaming</label>
+        <span id="aiStatus" class="pill">Idle</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="apply">Apply Settings</button>
+        <button class="btn" id="gen">AI Generate Case</button>
+        <button class="btn" id="analyze">AI Improve IE</button>
+        <button class="btn" id="preview">StyleA Preview</button>
+      </div>
+      <div class="row"><label>IDs (comma/space)</label><textarea id="ids" rows="3" placeholder="msg_17310 msg_17311"></textarea></div>
+      <div class="row"><button class="btn" id="buildIds">Build From IDs</button></div>
+      <div class="row"><label>Response preview</label><textarea id="resp" rows="8" readonly></textarea></div>
+    </div>
+    <iframe id="app" src="../index.html"></iframe>
+  </div>
+  <script>
+    const app = document.getElementById('app');
+    function post(msg){ app.contentWindow.postMessage(msg, '*'); }
+    document.getElementById('apply').onclick = function(){
+      post({ type:'viewerAI.settings', apiUrl: apiUrl.value.trim(), apiKey: apiKey.value.trim(), model: apiModel.value.trim(), openai: openai.checked, stream: stream.checked, prompt: prompt.value });
+    };
+    document.getElementById('gen').onclick = function(){ post({ type:'viewerAI.generate', prompt: prompt.value }); };
+    document.getElementById('analyze').onclick = function(){ post({ type:'viewerAI.analyze' }); };
+    document.getElementById('preview').onclick = function(){ post({ type:'viewerAI.preview' }); };
+    document.getElementById('buildIds').onclick = function(){
+      const ids = ids.value.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);
+      post({ type:'viewerAI.buildFromIds', ids });
+    };
+    // poll status
+    setInterval(function(){ try{
+      const st = app.contentWindow.viewerAIState && app.contentWindow.viewerAIState.get && app.contentWindow.viewerAIState.get();
+      if(st){ resp.value = st.aiResult || ''; aiStatus.textContent = st.aiTask ? (st.aiTask==='analyze'?'Analyzing…':'Generating…') : 'Idle'; }
+    }catch(_){} }, 800);
+  </script>
+</body>
+<\/html>

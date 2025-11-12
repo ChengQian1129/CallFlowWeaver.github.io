@@ -1,0 +1,91 @@
+*** Update File: index.html
+@@
+-function DropZone({index,active,setActive,onDrop}){
+-  var counterRef = React.useRef(0);
+-
+-  function handleDrop(event){
+-   event.preventDefault();
+-   event.stopPropagation();
+-   counterRef.current = 0;
+-   onDrop(index, event);
+-  }
+-
+-  function handleMouseUp(){
+-   try{
+-     var uid = window.__dragFromUid;
+-     var leftId = window.__dragFromLeftId;
+-     if(uid || leftId){
+-     var payload = uid ? {src:'right', uid:uid} : {src:'left', id:leftId};
+-     var fakeEvent = {
+-       preventDefault: function(){},
+-       stopPropagation: function(){},
+-       dataTransfer: {
+-         getData: function(){ return JSON.stringify(payload); }
+-       }
+-     };
+-     onDrop(index, fakeEvent);
+-     window.__dragFromUid = null;
+-     window.__dragFromLeftId = null;
+-     }
+-   }catch(_){ }
+-  }
+-
+-  return (
+-   <div
+-    className={"dropzone " + (active ? 'active' : '')}
+-    role="button"
+-    aria-label={"DropZone " + index}
+-    data-index={String(index)}
+-    onDragOver={(e)=>{e.preventDefault(); if(active!==index) setActive(index);}}
+-    onDragEnter={(e)=>{e.preventDefault(); counterRef.current++; setActive(index);}}
+-    onDragLeave={()=>{counterRef.current--; if(counterRef.current<=0) setActive(null);}}
+-    onDrop={handleDrop}
+-    onMouseUp={handleMouseUp}
+-   />
+-  );
+-}
++const DropZone = ({index,active,setActive,onDrop}) => {
++  const counterRef = React.useRef(0);
++
++  const handleDrop = (event) => {
++   event.preventDefault();
++   event.stopPropagation();
++   counterRef.current = 0;
++   onDrop(index, event);
++  };
++
++  const handleMouseUp = () => {
++   try{
++     const uid = window.__dragFromUid;
++     const leftId = window.__dragFromLeftId;
++     if(uid || leftId){
++      const payload = uid ? {src:'right', uid:uid} : {src:'left', id:leftId};
++      const fakeEvent = {
++        preventDefault: () => {},
++        stopPropagation: () => {},
++        dataTransfer: {
++          getData: () => JSON.stringify(payload)
++        }
++      };
++      onDrop(index, fakeEvent);
++      window.__dragFromUid = null;
++      window.__dragFromLeftId = null;
++     }
++   }catch(_){ }
++  };
++
++  return (
++   <div
++    className={"dropzone " + (active ? 'active' : '')}
++    role="button"
++    aria-label={"DropZone " + index}
++    data-index={String(index)}
++    onDragOver={(e)=>{e.preventDefault(); if(active!==index) setActive(index);}}
++    onDragEnter={(e)=>{e.preventDefault(); counterRef.current++; setActive(index);}}
++    onDragLeave={()=>{counterRef.current--; if(counterRef.current<=0) setActive(null);}}
++    onDrop={handleDrop}
++    onMouseUp={handleMouseUp}
++   />
++  );
++};
+*** End Patch

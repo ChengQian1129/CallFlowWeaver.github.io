@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CallFlowWeaver</title>
+  <link rel="icon" href="data:," />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      background: #0b0b0f;
+      color: #f4f4f5;
+      font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Toggle pill visuals */
+    .toggle {
+      width: 36px; height: 20px; border-radius: 9999px;
+      background: #3f3f46; position: relative;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+      transition: background-color .2s ease;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 9999px;
+      background: #d4d4d8; transition: left .2s ease, background-color .2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+    .toggle.on { background: #22c55e; }
+    .toggle.on::after { left: 18px; background: #fff; }
+
+    /* Card base & compact mode tweaks */
+    .card { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; background: rgba(24,24,27,0.4); }
+    .card.selected { outline: 1px solid rgba(59,130,246,0.5); }
+    .card.compact { padding: 8px; }
+    .card.compact .text-sm { font-size: 0.75rem !important; }
+    .card.compact .px-4 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    .card.compact .py-3 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+    .card.compact .gap-3 { gap: 0.5rem !important; }
+    .card.compact .gap-2 { gap: 0.25rem !important; }
+
+    /* Instance lanes visual bar */
+    .lanes-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; margin-bottom: 8px;
+      background: rgba(24,24,27,0.30); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; }
+    .lane-chip { font-size: 12px; color: #cbd5e1; padding: 2px 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 9999px; background: rgba(39,39,42,0.35); }
+    .lanes-bar .title { font-size: 12px; color: #a1a1aa; font-weight: 600; }
+
+    /* Left sidebar: unified summary thickness for collapsed and open */
+    details > summary.leftsummary { padding: 8px 12px; font-size: 1rem; line-height: 1.25rem; }
+    details[open] > summary.leftsummary { padding: 8px 12px; font-size: 1rem; line-height: 1.25rem; }
+    /* Reduce card padding only when group is collapsed (Chrome supports :has) */
+    .card:has(details:not([open])) { padding: 8px; }
+  </style>
+
+</head>
+<body>
+  <div id="app" class="min-h-screen bg-zinc-950 text-zinc-100"></div>
+  
+  <script defer src="./stylea_bridge_toolbar.js"></script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var seedAllowed = params.has('seed');
+        var truth = [
+          {
+            id: 'NGAP-InitialUEMessage',
+            message: 'Initial UE Message',
+            name: 'Initial UE Message',
+            family: '5GC', protocol: 'NGAP', interface: 'N2', type: 'Control',
+            from: 'gNB', to: 'AMF', release: 'Rel-18',
+            roleset: ['gNB$A','AMF$A'], from_role: 'gNB$A', to_role: 'AMF$A',
+            primary_ref: { ts:'38.413', section: '8.2.1', version: 'v18.0.0', release:'Rel-18', ref:'InitialUEMessage' },
+            doc: { summary_en:'Initial UE Message', comment_md:'', title:'InitialUEMessage' },
+            ie_tree: [ { presence:'O', name:'TestIE', $ref:'TestIE', children:[] } ],
+            ie_dict: { 'TestIE': { desc_en:'Sample IE', default:'defaultValue' } }
+          },
+          {
+            id: 'NGAP-DownlinkNASTransport',
+            message: 'Downlink NAS Transport',
+            name: 'Downlink NAS Transport',
+            family: '5GC', protocol: 'NGAP', interface: 'N2', type: 'Control',
+            from: 'AMF', to: 'gNB', release: 'Rel-18',
+            roleset: ['AMF$A','gNB$A'], from_role: 'AMF$A', to_role: 'gNB$A',
+            primary_ref: { ts:'38.413', section: '8.x', version:'v18.0.0', release:'Rel-18', ref:'DownlinkNASTransport' },
+            doc: { summary_en:'Downlink NAS Transport', comment_md:'', title: 'DownlinkNASTransport' },
+            ie_tree: [], ie_dict: {}
+          }
+        ];
+        if(seedAllowed) localStorage.setItem('5gc_imported_truth', JSON.stringify(truth));
+        if(seedAllowed) localStorage.setItem('5gc_import_text', truth.map(function(t){ return JSON.stringify(t); }).join('\n'));
+        var canvasItem = {
+          uid: 'seed_'+Date.now(),
+          msg: truth[0],
+          ie_overrides: { 'TestIE': 'overrideValue' },
+          from_role: truth[0].from + '$A',
+          to_role: truth[0].to + '$A',
+          x: 150, y: 150, expanded: true, forceEdit: true
+        };
+        var caseData = { caseName: 'Seeded_Case', caseDesc: 'Seed via script', canvas: [canvasItem] };
+        if(seedAllowed) localStorage.setItem('5gc_current_case', JSON.stringify(caseData));
+        var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
+        if(seedAllowed){ casesMap['Seeded_Case'] = { caseName:'Seeded_Case', caseDesc:'Seed via script', canvas: [canvasItem], savedAt: Date.now() }; localStorage.setItem('5gc_cases', JSON.stringify(casesMap)); }
+        localStorage.setItem('viewerSettings', JSON.stringify({ inst:false, compactMode:false, globalEditMode:false, itemsPerPage:20 }));
+        if(seedAllowed) console.log('Seeded localStorage for 5GC viewer.');
+        // params already defined above; keep clear handler below
+        // var params = new URLSearchParams(location.search);
+        if (params.has('clear')) {
+          try {
+            localStorage.setItem('5gc_current_case', JSON.stringify({ caseName: 'Seeded_Case', caseDesc: 'Cleared via query', canvas: [] }));
+            console.log('Canvas cleared via query parameter');
+          } catch (e) { console.error('Clear seed error:', e); }
+        }
+      }catch(e){ console.error('Seed error:', e); }
+    })();
+  </script>
+  <script>
+    (function(){
+      // offline fallback removed
+    })();
+  </script>
+  <script id="embedded-dataset" type="application/json">
+{"schema_version": "2.0", "id": "5GC.NGAP.NGSetupRequest.gNB->AMF@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "N/A", "message": "NG Setup Request", "type": "Request", "from": "gNB", "to": "AMF", "release": "Rel-18", "primary_ref": {"ts": "TS 38.413", "section": "§9.2.6.1", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 38.413 §9.2.6.1 V18.4.0"}, "aliases": ["NGSetupRequest"], "roleset": ["gNB$A","AMF$A"], "from_role": "gNB$A", "to_role": "AMF$A", "doc": {"summary_en": "The gNB sends the NG Setup Request to an AMF to establish the NG interface instance between them.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NGAP.NGSetupResponse.AMF->gNB@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "NGSetup", "message": "NG Setup Response", "type": "Response", "from": "AMF", "to": "gNB", "release": "Rel-18", "primary_ref": {"ts": "TS 38.413", "section": "§9.2.1.2", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 38.413 §9.2.1.2 V18.4.0"}, "aliases": ["NGSetupResponse"], "roleset": ["AMF$A","gNB$A"], "from_role": "AMF$A", "to_role": "gNB$A", "doc": {"summary_en": "Acknowledges NG Setup Request and finalizes N2 establishment.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NGAP.InitialUEMessage.gNB->AMF@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "N/A", "message": "Initial UE Message", "type": "Request", "from": "gNB", "to": "AMF", "release": "Rel-18", "primary_ref": {"ts": "38.413", "section": "8.6.1", "version": "18.4.0", "release": "Rel-18", "ref": "TS 38.413 §8.6.1 V18.4.0"}, "roleset": ["gNB$A","AMF$A"], "from_role": "gNB$A", "to_role": "AMF$A", "doc": {"summary_en": "Forward the first uplink NAS message with UE context.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NGAP.DownlinkNASTransport.AMF->gNB@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "N/A", "message": "Downlink NAS Transport", "type": "Request", "from": "AMF", "to": "gNB", "release": "Rel-18", "primary_ref": {"ts": "TS 38.413", "section": "§9.2.5.2", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 38.413 §9.2.5.2 V18.4.0"}, "aliases": ["DownlinkNASTransport"], "roleset": ["AMF$A","gNB$A"], "from_role": "AMF$A", "to_role": "gNB$A", "doc": {"summary_en": "Forward a NAS message to the UE via NGAP.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NAS-5G.RegistrationRequest.UE->AMF@Rel-18", "family": "5GC", "protocol": "NAS-5G", "interface": "N1", "operation": "Registration", "message": "Registration Request", "type": "Request", "from": "UE", "to": "AMF", "release": "Rel-18", "primary_ref": {"ts": "TS 24.501", "section": "§8.2.6", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 24.501 §8.2.6 V18.4.0"}, "aliases": ["Initial Registration"], "roleset": ["UE$A","AMF$A"], "from_role": "UE$A", "to_role": "AMF$A", "doc": {"summary_en": "UE initiates registration to the 5G system.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NAS-5G.SecurityModeCommand.AMF->UE@Rel-18", "family": "5GC", "protocol": "NAS-5G", "interface": "N1", "operation": "Security Mode Control", "message": "Security Mode Command", "type": "Request", "from": "AMF", "to": "UE", "release": "Rel-18", "primary_ref": {"ts": "TS 24.501", "section": "§8.2.5.2", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 24.501 §8.2.5.2 V18.4.0"}, "roleset": ["AMF$A","UE$A"], "from_role": "AMF$A", "to_role": "UE$A", "doc": {"summary_en": "Activate NAS security with selected algorithms.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+  </script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        if(!params.has('seed')) return;
+        var el=document.getElementById('embedded-dataset');
+        if(el && el.textContent && el.textContent.trim()){
+          var lines=el.textContent.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;});
+          var arr=[];
+          for(var i=0;i<lines.length;i++){ try{ arr.push(JSON.parse(lines[i])); }catch(e){} }
+          if(arr.length){
+            localStorage.setItem('5gc_imported_truth', JSON.stringify(arr));
+            localStorage.setItem('5gc_import_text', lines.join('\n'));
+            try{
+              window.exportMessages = arr.map(function(m,i){
+                var h=(m&&m.info&&m.info.header)||m.header||{};
+                var proto=h.protocol||m.protocol||m.family||'';
+                var iface=h.interface||m.interface||'';
+                var release=h.release||m.release||'';
+                var id=h.id||m.id||'';
+                var doc=(m&&m.info&&m.info.doc) || m.doc || {};
+                var nameRaw=h.msg||m.message||m.name||'';
+                var msgName=((doc&&typeof doc.title==='string'&&doc.title.trim())?doc.title.trim():nameRaw).replace(/[_-]+/g,' ').trim();
+                var label=m.label||((i+1)+' '+(msgName||'Message'));
+                var comment=m.comment || doc.comment_md || '';
+                var primary = m.primary_ref || (m.info && m.info.primary_ref) || null;
+                if(primary){ if(primary.section) primary.section=String(primary.section).replace(/搂/g,'§'); if(primary.ref) primary.ref=String(primary.ref).replace(/搂/g,'§'); }
+                return {from:m.from,to:m.to,label,
+                  info:{header:{msg:msgName,protocol:proto,interface:iface,release,id},payload:(m.info&&m.info.payload)||m.payload||{}},
+                  doc:doc,
+                  comment:comment,
+                  primary_ref: primary,
+                  ie_tree: m.ie_tree || ((m.info && m.info.ie_tree)||[]),
+                  ie_dict: m.ie_dict || ((m.info && m.info.ie_dict)||{})
+                };
+              });
+              window.lanes = function(){
+                var set=new Set();
+                (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); });
+                return Array.from(set);
+              };
+              try{
+                var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+                var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
+                if(!hasCanvas){
+                  var items=[];
+                  for(var i=0;i<Math.min(arr.length,4);i++){
+                    var m=arr[i]; if(!m||!m.from||!m.to) continue;
+                    items.push({ uid:'embedded_'+Date.now()+'_'+i, msg:m, ie_overrides:{},
+                      from_role:(m.from_role||(m.from+'$A')), to_role:(m.to_role||(m.to+'$A')),
+                      x: 140 + i*220, y: 160 + (i%2)*80, expanded:false, forceEdit:false });
+                  }
+                  if(items.length){
+                    var caseData={ caseName:'Imported_Case', caseDesc:'Built from embedded dataset', canvas: items, savedAt: Date.now() };
+                    localStorage.setItem('5gc_current_case', JSON.stringify(caseData));
+                    var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
+                    casesMap['Imported_Case']=caseData; localStorage.setItem('5gc_cases', JSON.stringify(casesMap));
+                  }
+                }
+              }catch(e){}
+            }catch(e){}
+          }
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script>
+    (function(){
+      var open = function(){ return new Promise(function(res,rej){ try{ var req = indexedDB.open('viewer', 1); req.onupgradeneeded = function(ev){ var db = ev.target.result; if(!db.objectStoreNames.contains('truth')) db.createObjectStore('truth', { keyPath:'id' }); }; req.onsuccess = function(ev){ res(ev.target.result); }; req.onerror = function(ev){ rej(ev.target.error||new Error('idb')); }; }catch(e){ rej(e); } }); };
+      var putRaw = function(text){ return open().then(function(db){ return new Promise(function(res,rej){ try{ var tx=db.transaction(['truth'],'readwrite'); var st=tx.objectStore('truth'); st.put({id:'raw', text:String(text||''), ts:Date.now()}); tx.oncomplete=function(){ res(true); }; tx.onerror=function(ev){ rej(ev.target.error||new Error('idb_put')); }; }catch(e){ rej(e); } }); }); };
+      var getRaw = function(){ return open().then(function(db){ return new Promise(function(res,rej){ try{ var tx=db.transaction(['truth'],'readonly'); var st=tx.objectStore('truth'); var req=st.get('raw'); req.onsuccess=function(ev){ var r=ev.target.result; res(r&&r.text||''); }; req.onerror=function(ev){ rej(ev.target.error||new Error('idb_get')); }; }catch(e){ rej(e); } }); }); };
+      window.truthDb = { putRaw: putRaw, getRaw: getRaw };
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var autoload = params.get('autoload');
+        if(autoload){
+          fetch(autoload).then(function(r){return r.text();}).then(function(t){
+            var lines=t.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;});
+            var arr=[]; lines.forEach(function(s){ try{ arr.push(JSON.parse(s)); }catch(e){} });
+            if(arr.length){
+              localStorage.setItem('5gc_imported_truth', JSON.stringify(arr));
+              localStorage.setItem('5gc_import_text', lines.join('\n'));
+              try{
+                var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+                var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
+                if(!hasCanvas){
+                  var items=[];
+                  for(var i=0;i<Math.min(arr.length,4);i++){
+                    var m=arr[i];
+                    if(!m||!m.from||!m.to) continue;
+                    items.push({
+                      uid: 'autoload_'+Date.now()+'_'+i,
+                      msg: m,
+                      ie_overrides: {},
+                      from_role: (m.from_role|| (m.from+'$A')),
+                      to_role: (m.to_role|| (m.to+'$A')),
+                      x: 140 + i*220,
+                      y: 160 + (i%2)*80,
+                      expanded: false,
+                      forceEdit: false
+                    });
+                  }
+                  var caseData={ caseName:'Autoload_Case', caseDesc:'Loaded via autoload query', canvas: items, savedAt: Date.now()};
+                  localStorage.setItem('5gc_current_case', JSON.stringify(caseData));
+                  var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
+                  casesMap['Autoload_Case']=caseData;
+                  localStorage.setItem('5gc_cases', JSON.stringify(casesMap));
+                }
+              }catch(e){}
+              try{
+                window.exportMessages = arr.map(function(m,i){
+                  var h=(m&&m.info&&m.info.header)||m.header||{};
+                  var proto=h.protocol||m.protocol||m.family||'';
+                  var iface=h.interface||m.interface||'';
+                  var release=h.release||m.release||'';
+                  var id=h.id||m.id||'';
+                  var doc=(m&&m.info&&m.info.doc) || m.doc || {};
+                  var nameRaw=h.msg||m.message||m.name||'';
+                  var msgName=((doc&&typeof doc.title==='string'&&doc.title.trim())?doc.title.trim():nameRaw).replace(/[_-]+/g,' ').trim();
+                  var label=m.label||((i+1)+' '+(msgName||'Message'));
+                  var comment=m.comment || doc.comment_md || '';
+                  var primary = m.primary_ref || (m.info && m.info.primary_ref) || null;
+                  if(primary){ if(primary.section) primary.section=String(primary.section).replace(/搂/g,'§'); if(primary.ref) primary.ref=String(primary.ref).replace(/搂/g,'§'); }
+                  return {from:m.from,to:m.to,label,
+                    info:{header:{msg:msgName,protocol:proto,interface:iface,release,id},payload:(m.info&&m.info.payload)||m.payload||{}},
+                    doc:doc,
+                    comment:comment,
+                    primary_ref: primary,
+                    ie_tree: m.ie_tree || ((m.info && m.info.ie_tree)||[]),
+                    ie_dict: m.ie_dict || ((m.info && m.info.ie_dict)||{})
+                  };
+                });
+                window.lanes = function(){
+                  var set=new Set();
+                  (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); });
+                  return Array.from(set);
+                };
+                try{
+                  var existingCase2 = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+                  var hasCanvas2 = Array.isArray(existingCase2.canvas) && existingCase2.canvas.length>0;
+                  if(!hasCanvas2){
+                    var items2=[];
+                    for(var j=0;j<Math.min(arr.length,4);j++){
+                      var mm=arr[j]; if(!mm||!mm.from||!mm.to) continue;
+                      items2.push({ uid:'fallback_'+Date.now()+'_'+j, msg:mm, ie_overrides:{},
+                        from_role:(mm.from_role||(mm.from+'$A')), to_role:(mm.to_role||(mm.to+'$A')),
+                        x: 140 + j*220, y: 160 + (j%2)*80, expanded:false, forceEdit:false });
+                    }
+                    if(items2.length){
+                      var caseData2={ caseName:'Imported_Case', caseDesc:'Built from fallback dataset', canvas: items2, savedAt: Date.now() };
+                      localStorage.setItem('5gc_current_case', JSON.stringify(caseData2));
+                      var casesMap2 = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
+                      casesMap2['Imported_Case']=caseData2; localStorage.setItem('5gc_cases', JSON.stringify(casesMap2));
+                    }
+                  }
+                }catch(e){}
+              }catch(e){}
+            }
+          }).catch(function(e){
+            try{ console.error('Autoload fetch failed:', e); }catch(_e){}
+            try{ alert('Autoload 读取失败：'+(e&&e.message||e)); }catch(_e){}
+          });
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var autoload = params.get('autoload');
+        if(autoload){ return; }
+        var ingest = function(t){
+          var lines=t.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;});
+          var arr=[]; lines.forEach(function(s){ try{ arr.push(JSON.parse(s)); }catch(e){} });
+          if(!arr.length) return;
+          try{ if(window.truthDb && typeof window.truthDb.putRaw==='function') window.truthDb.putRaw(t); }catch(_e){}
+          try{ localStorage.setItem('5gc_imported_truth', JSON.stringify(arr)); localStorage.setItem('5gc_import_text', lines.join('\n')); }catch(_e){}
+          try{ window.__truthCache = arr; document.dispatchEvent(new CustomEvent('truthcache-ready')); setTimeout(function(){ try{ document.dispatchEvent(new CustomEvent('truthcache-ready')); }catch(_e){} }, 500); }catch(_e){}
+          try{
+            window.exportMessages = arr.map(function(m,i){
+              var h=(m&&m.info&&m.info.header)||m.header||{};
+              var proto=h.protocol||m.protocol||m.family||'';
+              var iface=h.interface||m.interface||'';
+              var release=h.release||m.release||'';
+              var id=h.id||m.id||'';
+              var doc=(m&&m.info&&m.info.doc) || m.doc || {};
+              var nameRaw=h.msg||m.message||m.name||'';
+              var msgName=((doc&&typeof doc.title==='string'&&doc.title.trim())?doc.title.trim():nameRaw).replace(/[_-]+/g,' ').trim();
+              var label=m.label||((i+1)+' '+(msgName||'Message'));
+              var comment=m.comment || doc.comment_md || '';
+              var primary = m.primary_ref || (m.info && m.info.primary_ref) || null;
+              if(primary){ if(primary.section) primary.section=String(primary.section).replace(/搂/g,'§'); if(primary.ref) primary.ref=String(primary.ref).replace(/搂/g,'§'); }
+              return {from:m.from,to:m.to,label,
+                info:{header:{msg:msgName,protocol:proto,interface:iface,release,id},payload:(m.info&&m.info.payload)||m.payload||{}},
+                doc:doc,
+                comment:comment,
+                primary_ref: primary,
+                ie_tree: m.ie_tree || ((m.info && m.info.ie_tree)||[]),
+                ie_dict: m.ie_dict || ((m.info && m.info.ie_dict)||{})
+              };
+            });
+            window.lanes = function(){ var set=new Set(); (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); }); return Array.from(set); };
+          }catch(e){}
+          try{
+            var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+            var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
+            if(!hasCanvas){
+              var items=[]; for(var k=0;k<Math.min(arr.length,4);k++){ var m3=arr[k]; if(!m3||!m3.from||!m3.to) continue;
+                items.push({ uid:'default_'+Date.now()+'_'+k, msg:m3, ie_overrides:{}, from_role:(m3.from_role||(m3.from+'$A')), to_role:(m3.to_role||(m3.to+'$A')),
+                  x: 140 + k*220, y: 160 + (k%2)*80, expanded:false, forceEdit:false }); }
+              if(items.length){ var caseData={ caseName:'Imported_Case', caseDesc:'Built from default dataset', canvas: items, savedAt: Date.now() };
+                localStorage.setItem('5gc_current_case', JSON.stringify(caseData)); var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
+                casesMap['Imported_Case']=caseData; localStorage.setItem('5gc_cases', JSON.stringify(casesMap)); }
+            }
+          }catch(_e){}
+          try{ if(window.__appMounted){ if(!window.__ingestReloaded){ window.__ingestReloaded = true; location.reload(); } } }catch(_e){}
+        };
+        if(location.protocol==='file:'){
+          var existing = [];
+          try{ existing = JSON.parse(localStorage.getItem('5gc_imported_truth')||'[]'); }catch(_e){}
+          var needsImportUI = !(Array.isArray(existing) && existing.length>0) || (Array.isArray(existing) && existing.length < 100);
+          if(needsImportUI){
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);color:#e5e7eb;display:flex;align-items:center;justify-content:center;z-index:2147483600;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
+            overlay.innerHTML = '<div style="background:#111827;border:1px solid #27272a;border-radius:12px;padding:20px;max-width:520px;width:90%">'
+              + '<div style="font-weight:600;margin-bottom:8px">导入默认数据</div>'
+              + '<div style="font-size:13px;color:#a1a1aa;margin-bottom:12px">由于浏览器安全策略，直接从文件打开时无法自动读取同目录的数据文件。请选择 <code>non5gc_rel18.final.rich.jsonl</code> 以导入。</div>'
+              + '<input id="file-pick" type="file" accept=".jsonl,.txt,application/json" style="width:100%;margin-bottom:12px;color:#e5e7eb" />'
+              + '<div style="font-size:12px;color:#94a3b8">提示：选择后将自动导入并刷新界面。</div>'
+              + '</div>';
+            document.body.appendChild(overlay);
+            var input = overlay.querySelector('#file-pick');
+            if(input){ input.addEventListener('change', function(){ try{ var f=input.files && input.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ try{ ingest(String(r.result||'')); }catch(e){} try{ document.body.removeChild(overlay); }catch(e){} try{ location.reload(); }catch(e){} }; r.readAsText(f); }catch(e){} }); }
+          }
+        }else{
+          fetch('./non5gc_rel18.final.rich.jsonl').then(function(r){return r.text();}).then(function(t){ ingest(t); }).catch(function(e){ try{ console.error('Default dataset fetch failed:', e); }catch(_e){} });
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script>
+    (function(){
+      var params = new URLSearchParams(location.search);
+      // 同步XHR兜底已移除，避免阻塞导致空白屏。依赖异步fetch与autoload/seed路径。
+    })();
+  </script>
+  <script>
+    (function(){
+      function load(src, cb){ var s=document.createElement('script'); s.src=src; s.onload=cb; s.onerror=cb; document.head.appendChild(s); }
+      function ensureReact(cb){ if(window.React && window.ReactDOM) return cb(); var list=[
+        'https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js',
+        'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js'
+      ]; var i=0; function next(){ if(window.React && window.ReactDOM) return cb(); if(i>=list.length) return cb(); load(list[i++], next); } next(); }
+      function loadBundle(){ var s=document.createElement('script'); s.src='./bundle.js'; s.charset='utf-8'; document.body.appendChild(s); }
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ ensureReact(loadBundle); }); else ensureReact(loadBundle);
+    })();
+  </script>
+</body>
+</html>

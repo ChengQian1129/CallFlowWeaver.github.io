@@ -1,0 +1,68 @@
+Uncaught SyntaxError: unknown: Unexpected token (964:2)
+
+  962 | /* function BuildPane(props){
+  963 |   // NOTE: temporarily avoid multi-line destructuring to isolate Babel parse state
+> 964 |   const pack = props;
+      |   ^
+  965 |
+  966 |   // 安全回退：如存在内部代码直接引用 compactMode，统一映射到 isCompact
+  967 |   const isCompact = (typeof cmpMode !== 'undefined') ? cmpMode : false; at undefined:1:8488
+SyntaxError: unknown: Unexpected token (964:2)
+
+  962 | /* function BuildPane(props){
+  963 |   // NOTE: temporarily avoid multi-line destructuring to isolate Babel parse state
+> 964 |   const pack = props;
+      |   ^
+  965 |
+  966 |   // 安全回退：如存在内部代码直接引用 compactMode，统一映射到 isCompact
+  967 |   const isCompact = (typeof cmpMode !== 'undefined') ? cmpMode : false;
+    at e (<anonymous>:1:248064)
+    at t.r.raise (<anonymous>:1:286202)
+    at t.r.unexpected (<anonymous>:1:286641)
+    at t.r.parseExprAtom (<anonymous>:1:461281)
+    at t.r.parseExprAtom (<anonymous>:1:338310)
+    at t.r.parseExprSubscripts (<anonymous>:1:454161)
+    at t.r.parseUpdate (<anonymous>:1:453781)
+    at t.r.parseMaybeUnary (<anonymous>:1:453408)
+    at t.r.parseMaybeUnaryOrPrivate (<anonymous>:1:450249)
+    at t.r.parseExprOps (<anonymous>:1:450359)
+    at t.r.parseMaybeConditional (<anonymous>:1:449829)
+    at t.r.parseMaybeAssign (<anonymous>:1:449081)
+    at t.r.parseExpressionBase (<anonymous>:1:448174)
+    at <anonymous>:1:448080
+    at t.r.allowInAnd (<anonymous>:1:481169)
+    at t.r.parseExpression (<anonymous>:1:448048)
+    at t.r.jsxParseExpressionContainer (<anonymous>:1:335608)
+    at t.r.jsxParseElementAt (<anonymous>:1:337333)
+    at t.r.jsxParseElement (<anonymous>:1:338014)
+    at t.r.parseExprAtom (<anonymous>:1:338159)
+    at t.r.parseExprSubscripts (<anonymous>:1:454161)
+    at t.r.parseUpdate (<anonymous>:1:453781)
+    at t.r.parseMaybeUnary (<anonymous>:1:453408)
+    at t.r.parseMaybeUnaryOrPrivate (<anonymous>:1:450249)
+    at t.r.parseExprOps (<anonymous>:1:450359)
+    at t.r.parseMaybeConditional (<anonymous>:1:449829)
+    at t.r.parseMaybeAssign (<anonymous>:1:449081)
+    at <anonymous>:1:448636
+    at t.r.allowInAnd (<anonymous>:1:481169)
+    at t.r.parseMaybeAssignAllowIn (<anonymous>:1:448604)
+    at t.r.parseParenAndDistinguishExpression (<anonymous>:1:466566)
+    at t.r.parseExprAtom (<anonymous>:1:459123)
+    at t.r.parseExprAtom (<anonymous>:1:338310)
+    at t.r.parseExprSubscripts (<anonymous>:1:454161)
+    at t.r.parseUpdate (<anonymous>:1:453781)
+    at t.r.parseMaybeUnary (<anonymous>:1:453408)
+    at t.r.parseMaybeUnaryOrPrivate (<anonymous>:1:450249)
+    at t.r.parseExprOpBaseRightExpr (<anonymous>:1:452229)
+    at t.r.parseExprOpRightExpr (<anonymous>:1:452102)
+    at t.r.parseExprOp (<anonymous>:1:451261)
+    at t.r.parseExprOp (<anonymous>:1:451487)
+    at t.r.parseExprOps (<anonymous>:1:450432)
+    at t.r.parseMaybeConditional (<anonymous>:1:449829)
+    at t.r.parseMaybeAssign (<anonymous>:1:449081)
+    at t.r.parseExpressionBase (<anonymous>:1:448174)
+    at <anonymous>:1:448080
+    at t.r.allowInAnd (<anonymous>:1:481169)
+    at t.r.parseExpression (<anonymous>:1:448048)
+    at t.r.jsxParseExpressionContainer (<anonymous>:1:335608)
+    at t.r.jsxParseElementAt (<anonymous>:1:337333)

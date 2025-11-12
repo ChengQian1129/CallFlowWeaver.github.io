@@ -1,0 +1,21 @@
+{
+  "RFC2865": "./specs/rfc/rfc2865.html",
+  "RFC2866": "./specs/rfc/rfc2866.html",
+  "RFC3261": "./specs/rfc/rfc3261.html",
+  "RFC3262": "./specs/rfc/rfc3262.html",
+  "RFC3265": "./specs/rfc/rfc3265.html",
+  "RFC3311": "./specs/rfc/rfc3311.html",
+  "RFC3515": "./specs/rfc/rfc3515.html",
+  "RFC3903": "./specs/rfc/rfc3903.html",
+  "RFC4028": "./specs/rfc/rfc4028.html",
+  "RFC5176": "./specs/rfc/rfc5176.html",
+  "RFC6086": "./specs/rfc/rfc6086.html",
+  "RFC6665": "./specs/rfc/rfc6665.html",
+  "RFC6733": "./specs/rfc/rfc6733.html",
+  "RFC7296": "./specs/rfc/rfc7296.html",
+  "TS 29.244@V18.5.0": "./specs/etsi/129200_129299/129244/18.05.00_60/ts_129244v180500p.pdf",
+  "TS 29.509@V18.4.0": "./specs/etsi/129500_129599/129509/18.04.00_60/ts_129509v180400p.pdf",
+  "TS 29.594@V18.4.0": "./specs/etsi/129500_129599/129594/18.04.00_60/ts_129594v180400p.pdf",
+  "TS 32.291@V18.5.0": "./specs/etsi/132200_132299/132291/18.05.00_60/ts_132291v180500p.pdf",
+  "TS 38.331@V18.4.0": "./specs/etsi/138300_138399/138331/18.04.00_60/ts_138331v180400p.pdf"
+}
