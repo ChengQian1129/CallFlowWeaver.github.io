@@ -34,6 +34,7 @@
         <button class="btn" id="apply">Apply Settings</button>
         <button class="btn" id="gen">AI Generate Case</button>
         <button class="btn" id="analyze">AI Improve IE</button>
+        <button class="btn" id="analyzeLocal">Local Analyze</button>
         <button class="btn" id="preview">StyleA Preview</button>
       </div>
       <div class="row"><label>IDs (comma/space)</label><textarea id="ids" rows="3" placeholder="msg_17310 msg_17311"></textarea></div>
@@ -50,6 +51,7 @@
     };
     document.getElementById('gen').onclick = function(){ post({ type:'viewerAI.generate', prompt: prompt.value }); };
     document.getElementById('analyze').onclick = function(){ post({ type:'viewerAI.analyze' }); };
+    document.getElementById('analyzeLocal').onclick = function(){ post({ type:'viewerAI.localAnalyze' }); };
     document.getElementById('preview').onclick = function(){ post({ type:'viewerAI.preview' }); };
     document.getElementById('buildIds').onclick = function(){
       const ids = ids.value.split(/[\s,]+/).map(s=>s.trim()).filter(Boolean);

@@ -1414,6 +1414,7 @@ function App() {
   if (!window.viewerAI) window.viewerAI = {};
   window.viewerAI.generate = onAiGenerate;
   window.viewerAI.analyze = onAiAnalyzeCase;
+  window.viewerAI.localAnalyze = onLocalAnalyzeCase;
   window.viewerAI.settings = function (s) {
     try {
       if (s && typeof s.apiUrl === 'string') setAiApiUrl(s.apiUrl);
@@ -1441,6 +1442,7 @@ function App() {
       if (d.type === 'viewerAI.settings') return window.viewerAI.settings(d);
       if (d.type === 'viewerAI.generate') { if (typeof d.prompt === 'string') setAiPrompt(d.prompt); return onAiGenerate(); }
       if (d.type === 'viewerAI.analyze') return onAiAnalyzeCase();
+      if (d.type === 'viewerAI.localAnalyze') return onLocalAnalyzeCase();
       if (d.type === 'viewerAI.buildFromIds') { if (Array.isArray(d.ids)) return buildCaseFromIds(d.ids.map(String)); }
       if (d.type === 'viewerAI.preview') return window.viewerAI.preview();
     } catch (_) {}
