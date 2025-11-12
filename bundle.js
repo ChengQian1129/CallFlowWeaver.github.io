@@ -963,6 +963,7 @@ function App() {
       setCanvas(function (prev) {
         return prev.concat(addItems);
       });
+      try { window.__lastAddedUids = addItems.map(function(x){ return x.uid; }); } catch (_){ }
       if (window.showToast) window.showToast('Created case from ID sequence: ' + addItems.length + ' items', 'success');
     } catch (e) {
       alert('Create case by IDs error: ' + (e && e.message || e));
@@ -1523,14 +1524,15 @@ function App() {
       url = /\/v1$/.test(base) ? base + '/chat/completions' : base;
       var sys = 'You are a 5GC signaling expert. Based on supported message IDs, return ordered message_ids for the requested flow.';
       var allIds = (Array.isArray(truth)?truth:[]).map(function(m){ return m && m.id; }).filter(Boolean);
+      var filteredIds = pickRelevantIds(aiBuildText||aiPrompt, allIds);
       var msgs = [ { role:'system', content: sys }, { role:'user', content: String(aiBuildText||aiPrompt||'') } ];
-      if (allIds.length) msgs.push({ role:'user', content: 'supported_message_ids: ' + JSON.stringify(allIds) });
+      if (filteredIds.length) msgs.push({ role:'user', content: 'supported_message_ids: ' + JSON.stringify(filteredIds) });
       var payload = { model: String(aiModel||'gemini-2.5-pro'), messages: msgs };
       if (aiOpenAiCompat) payload = Object.assign({}, payload, { stream: !!aiStream });
       fetch(url, { method:'POST', headers: headers, body: JSON.stringify(payload) }).then(function(res){
         if (!(aiOpenAiCompat && aiStream && res && res.body)) return res.json();
-        var content = ''; return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; }).then(function(){ try{ var obj = JSON.parse(content); var ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; if(!ids||!ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } if(ids && ids.length){ buildCaseFromIds(ids); } }catch(_e){} return null; });
-      }).then(function(data){ if(!data) return; try{ setAiResult(JSON.stringify(data,null,2)); var ids=[]; if(data && Array.isArray(data.message_ids)) ids = data.message_ids.map(String); else if(data && data.choices && data.choices[0] && data.choices[0].message && typeof data.choices[0].message.content==='string'){ var content = data.choices[0].message.content; try{ var obj=JSON.parse(content); if(Array.isArray(obj.message_ids)) ids = obj.message_ids.map(String); }catch(_e){} if(!ids || !ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } } if(ids && ids.length){ buildCaseFromIds(ids); } }catch(_e){} }).catch(function(e){ alert('AI generation request error: ' + (e && e.message || e)); }).finally(function(){ setAiBusy(false); setAiTask(''); setAiBuildOpen(false); });
+        var content = ''; return res.body.getReader().read().then(function step(r){ var done=r.done; var val=r.value||new Uint8Array(); var td=new TextDecoder(); var buf=td.decode(val); var lines=buf.split('\n'); for(var i=0;i<lines.length;i++){ var s=lines[i].trim(); if(!s) continue; if(s.indexOf('data:')===0) s=s.slice(5).trim(); if(s==='[DONE]') continue; try{ var chunk=JSON.parse(s); var d=chunk&&chunk.choices&&chunk.choices[0]&&chunk.choices[0].delta; if(d&&typeof d.content==='string'){ content+=d.content; setAiResult(content.slice(-2000)); } }catch(_e){} } return done; }).then(function(){ try{ var obj = JSON.parse(content); var ids = Array.isArray(obj.message_ids)?obj.message_ids.map(String):[]; if(!ids||!ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } if(ids && ids.length){ buildCaseFromIds(ids); try{ showAiStatus('Parsed '+ids.length+' ids'); }catch(_s){} if (window.aiAutoOptimize) { try { var u = Array.isArray(window.__lastAddedUids)?window.__lastAddedUids.slice():[]; if(u.length){ window.__aiSubset = u.slice(0, 20); onAiAnalyzeCase().then(function(){ window.__aiSubset = u.slice(20, 40); if(window.__aiSubset.length) return onAiAnalyzeCase(); }).then(function(){ window.__aiSubset = null; }); } } catch(_){ } } } }catch(_e){} return null; });
+      }).then(function(data){ if(!data) return; try{ setAiResult(JSON.stringify(data,null,2)); var ids=[]; if(data && Array.isArray(data.message_ids)) ids = data.message_ids.map(String); else if(data && data.choices && data.choices[0] && data.choices[0].message && typeof data.choices[0].message.content==='string'){ var content = data.choices[0].message.content; try{ var obj=JSON.parse(content); if(Array.isArray(obj.message_ids)) ids = obj.message_ids.map(String); }catch(_e){} if(!ids || !ids.length){ var ticks = content.match(/`([^`]+)`/g); if(ticks){ var c = ticks.map(function(s){ return s.replace(/`/g,'').trim(); }).filter(Boolean); if(c && c.length) ids = Array.from(new Set(c.map(String))); } } } if(ids && ids.length){ buildCaseFromIds(ids); try{ showAiStatus('Parsed '+ids.length+' ids'); }catch(_s){} if (window.aiAutoOptimize) { try { var u = Array.isArray(window.__lastAddedUids)?window.__lastAddedUids.slice():[]; if(u.length){ window.__aiSubset = u.slice(0, 20); onAiAnalyzeCase().then(function(){ window.__aiSubset = u.slice(20, 40); if(window.__aiSubset.length) return onAiAnalyzeCase(); }).then(function(){ window.__aiSubset = null; }); } } catch(_){ } } } }catch(_e){} }).catch(function(e){ alert('AI generation request error: ' + (e && e.message || e)); }).finally(function(){ setAiBusy(false); setAiTask(''); setAiBuildOpen(false); });
     } catch (e) { alert('AI generation request error: ' + (e && e.message || e)); }
   }
 
@@ -1544,7 +1546,9 @@ function App() {
 
   React.useEffect(function(){
     function onKey(e){ try{ if(e && e.ctrlKey && e.altKey && (e.key||'').toLowerCase()==='b'){ setAiBuildOpen(true); } }catch(_){} }
+    function onKeys(e){ try{ var k=(e.key||'').toLowerCase(); if(e && e.ctrlKey && e.altKey && k==='g'){ if(!aiBuildOpen) setAiBuildOpen(true); setTimeout(function(){ try{ onAiBuildFlow(); }catch(_){ } }, 10); } if(e && e.ctrlKey && e.altKey && k==='i'){ onAiAnalyzeCase(); } }catch(_){} }
     try{ window.addEventListener('keydown', onKey); }catch(_){ }
+    try{ window.addEventListener('keydown', onKeys); }catch(_){ }
     return function(){ try{ window.removeEventListener('keydown', onKey); }catch(_){ } };
   }, []);
   React.useEffect(function(){
@@ -1564,6 +1568,7 @@ function App() {
       document.body.appendChild(backdrop); document.body.appendChild(panel);
       requestAnimationFrame(function(){ try{ backdrop.classList.add('open'); panel.classList.add('open'); }catch(_){ } });
       ta.addEventListener('input', function(){ try{ setAiBuildText(ta.value); }catch(_){ } });
+      ta.addEventListener('keydown', function(e){ try{ if(e && e.ctrlKey && (e.key||'').toLowerCase()==='enter'){ setAiBuildText(ta.value); onAiBuildFlow(); } }catch(_){ } });
       btnCancel.addEventListener('click', function(){ try{ backdrop.classList.remove('open'); panel.classList.remove('open'); }catch(_){ } setTimeout(function(){ try{ setAiBuildOpen(false); }catch(_){ } try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } }, 240); });
       btnGen.addEventListener('click', function(){ try{ setAiBuildText(ta.value); }catch(_){ } try{ onAiBuildFlow(); }catch(_){ } });
       return function(){ try{ document.body.removeChild(panel); document.body.removeChild(backdrop); }catch(_){ } };
@@ -1576,6 +1581,7 @@ function App() {
       function onClick(){ try{ setAiBuildOpen(true); }catch(_){ } }
       btn.addEventListener('click', onClick);
       document.body.appendChild(btn);
+      try{ window.aiAutoOptimize = true; }catch(_){ }
       return function(){ try{ btn.removeEventListener('click', onClick); }catch(_){ } try{ document.body.removeChild(btn); }catch(_){ } };
     }catch(_){ }
   }, []);
