@@ -626,6 +626,11 @@ function App() {
             err: 0
           });
         }
+      } else if (Array.isArray(window.__truthCache) && window.__truthCache.length) {
+        var arr2 = window.__truthCache;
+        setTruth(arr2);
+        setByProto(groupMode === 'interface' ? groupByInterface(arr2) : groupByProto(arr2));
+        setImportInfo({ ok: arr2.length, err: 0 });
       }
     } catch (_) {}
   }, []);
@@ -643,6 +648,13 @@ function App() {
             setImportInfo({ ok: arr.length, err: 0 });
             handled = true;
           }
+        }
+        if (!handled && Array.isArray(window.__truthCache) && window.__truthCache.length) {
+          var arr3 = window.__truthCache;
+          setTruth(arr3);
+          setByProto(groupMode === 'interface' ? groupByInterface(arr3) : groupByProto(arr3));
+          setImportInfo({ ok: arr3.length, err: 0 });
+          handled = true;
         }
         if (!handled && window.truthDb && typeof window.truthDb.getRaw === 'function') {
           window.truthDb.getRaw().then(function (text) {
