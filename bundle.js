@@ -584,6 +584,28 @@ function App() {
       }
     } catch (_) {}
     try {
+      var params = new URLSearchParams(location.search || '');
+      var qUrl = params.get('aiUrl');
+      var qKey = params.get('aiKey');
+      var qModel = params.get('aiModel');
+      var qOpen = params.get('aiOpenAI');
+      var qStream = params.get('aiStream');
+      if (qUrl) setAiApiUrl(String(qUrl).trim());
+      if (qKey) setAiApiKey(String(qKey).trim());
+      if (qModel) setAiModel(String(qModel).trim());
+      if (qOpen != null) setAiOpenAiCompat(qOpen === '1' || qOpen === 'true');
+      if (qStream != null) setAiStream(qStream === '1' || qStream === 'true');
+    } catch (_) {}
+    try {
+      var needDefaults = !aiApiUrl;
+      if (needDefaults) {
+        setAiApiUrl('https://x666.me/v1');
+        setAiModel('gemini-2.5-pro');
+        setAiOpenAiCompat(true);
+        setAiStream(true);
+      }
+    } catch (_) {}
+    try {
       var p = localStorage.getItem('viewerAI_prompt');
       if (p != null) setAiPrompt(String(p));
     } catch (_) {}
