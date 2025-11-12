@@ -835,6 +835,25 @@ function App() {
       localStorage.setItem('5gc_current_case', JSON.stringify(data));
     } catch (_) {}
   }, [caseName, caseDesc, canvas]);
+  React.useEffect(function () {
+    try {
+      if ((!truth || truth.length === 0) && Array.isArray(canvas) && canvas.length) {
+        var uniq = {};
+        for (var i = 0; i < canvas.length; i++) {
+          var m = canvas[i] && canvas[i].msg;
+          if (m && (m.id || m.message)) {
+            uniq[m.id || m.message || i] = m;
+          }
+        }
+        var arr = Object.values(uniq);
+        if (arr.length) {
+          setTruth(arr);
+          setByProto(groupMode === 'interface' ? groupByInterface(arr) : groupByProto(arr));
+          setImportInfo({ ok: arr.length, err: 0 });
+        }
+      }
+    } catch (_) {}
+  }, [canvas, truth, groupMode]);
   var rm = function rm(uid) {
     setCanvas(function (prev) {
       return prev.filter(function (x) {
