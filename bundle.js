@@ -236,6 +236,30 @@ function groupByInterface(a) {
   return m;
 }
 
+function pickRelevantIds(prompt, allIds) {
+  var p = String(prompt || '').toLowerCase();
+  var ids = Array.isArray(allIds) ? allIds.map(String) : [];
+  var tokens = p.split(/[^a-z0-9]+/).filter(Boolean);
+  var scored = ids.map(function (id) {
+    var idl = String(id || '').toLowerCase();
+    var score = 0;
+    for (var i = 0; i < tokens.length; i++) {
+      var t = tokens[i];
+      if (!t) continue;
+      if (idl.indexOf(t) >= 0) score += 2;
+    }
+    if (/paging/.test(p) && /paging/.test(idl)) score += 3;
+    if (/service/.test(p) && /service/.test(idl)) score += 2;
+    if (/(attach|registration)/.test(p) && /(attach|registration)/.test(idl)) score += 3;
+    if (/(diameter|http|sip|sgsap|n1|nas)/.test(p) && /(diameter|http|sip|sgsap|n1|nas)/.test(idl)) score += 1;
+    return { id: id, score: score };
+  });
+  scored.sort(function (a, b) { return b.score - a.score; });
+  var result = scored.filter(function (x) { return x.score > 0; }).map(function (x) { return x.id; });
+  if (result.length < 3) result = ids.slice(0, Math.min(8, ids.length));
+  return result.slice(0, 20);
+}
+
 // ---------- Preview builder (NO literal </scr'+'ipt> anywhere) ----------
 // Safe global fallbacks to avoid ReferenceError from free-variable usage
 // Some legacy code paths may reference `compactMode` as a free variable.
