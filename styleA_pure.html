@@ -821,44 +821,7 @@ if(!nodes.length || !messages.length){
         lbl.addEventListener('click',()=>{
           try{
           const safeInfo = (m && m.info) ? m.info : {};
-          const mergedPayload = (safeInfo && (safeInfo.payload || safeInfo.payload_kv || safeInfo.fields || safeInfo.ies)) || (m.payload || m.payload_kv || m.fields || m.ies) || {};
-          const mergedHeader = (safeInfo && (safeInfo.header || safeInfo.headers)) || (m.header || m.headers) || ({});
-          const showObj = { header: mergedHeader };
-          renderJSON(showObj,jsonViewer);
-          const ieTreeLocal = (m.ie_tree || (safeInfo && safeInfo.ie_tree) || []);
-          const ieDictLocal = (m.ie_dict || (safeInfo && safeInfo.ie_dict) || {});
-          const overridesLocal = (safeInfo && safeInfo.overrides) || m.overrides || {};
-          if(Array.isArray(ieTreeLocal) && ieTreeLocal.length){
-            function defOf(node, meta){ if(node && node.val_default!==undefined) return node.val_default; if(meta && meta.default!==undefined) return meta.default; return ''; }
-            function renderIEPayload(items, dict, overrides){
-              const wrap=document.createElement('details'); wrap.open=true; const sum=document.createElement('summary'); sum.textContent='payload'; wrap.appendChild(sum);
-              const holder=document.createElement('div'); holder.style.marginLeft='12px'; wrap.appendChild(holder);
-              function walk(arr, container){
-                arr.forEach(it=>{
-                  const key=(it && it.$ref)? String(it.$ref).replace(/^#/,'') : '';
-                  const meta=(key && dict && dict[key])? dict[key] : {};
-                  const valOverride=(overrides && Object.prototype.hasOwnProperty.call(overrides,key))? overrides[key] : '';
-                  const defv=defOf(it, meta);
-                  const val=(valOverride!==''? valOverride : defv);
-                  const title=document.createElement('div');
-                  const name=document.createElement('span'); name.textContent=String(it.name||key||'(unnamed)');
-                  const valSpan=document.createElement('span'); valSpan.style.marginLeft='6px'; valSpan.textContent=val!==''? (': '+String(val)) : '';
-                  title.appendChild(name); if(valSpan.textContent) title.appendChild(valSpan);
-                  if(Array.isArray(it.children) && it.children.length){
-                    const det=document.createElement('details'); det.open=true; const sum=document.createElement('summary'); sum.appendChild(title); det.appendChild(sum);
-                    const inner=document.createElement('div'); inner.style.marginLeft='12px'; det.appendChild(inner);
-                    container.appendChild(det);
-                    walk(it.children, inner);
-                  }else{
-                    container.appendChild(title);
-                  }
-                });
-              }
-              walk(items, holder);
-              return wrap;
-            }
-            try{ jsonViewer.appendChild(renderIEPayload(ieTreeLocal, ieDictLocal, overridesLocal)); }catch(_){ }
-          }
+          renderJSON(safeInfo,jsonViewer);
           const parser=(window.marked && window.marked.parse ? marked.parse : md);
           const docRef = (m && (m.doc || (m.info && m.info.doc))) || {};
           const _summary = (docRef.summary_en || m.summary_en || '');
@@ -867,35 +830,36 @@ if(!nodes.length || !messages.length){
           const _primary = (m.primary_ref || (m.info && m.info.primary_ref)) || null;
 
           const parts=[];
-          const extraRefs = [];
-          if(Array.isArray(m && m.spec_refs)) extraRefs.push.apply(extraRefs, m.spec_refs);
-          if(safeInfo && Array.isArray(safeInfo.spec_refs)) extraRefs.push.apply(extraRefs, safeInfo.spec_refs);
-          if(docRef && Array.isArray(docRef.refs)) extraRefs.push.apply(extraRefs, docRef.refs);
-          if(docRef && Array.isArray(docRef.spec_refs)) extraRefs.push.apply(extraRefs, docRef.spec_refs);
-          function buildViewer(r){
-            const tsRaw=String(r.ts||'').trim();
+          if(_primary && (_primary.ts || _primary.section || _primary.version || _primary.release || _primary.ref)){
+            const tsRaw=String(_primary.ts||'').trim();
             const tsNum=tsRaw.replace(/^\s*TS\s*/i,'');
             const seriesPart=/^(\d+)\.(\d+)$/.exec(tsNum);
             const seriesDir=seriesPart? (seriesPart[1]+'_series') : '';
             const specFolder=seriesPart? (seriesPart[0]) : '';
             const archiveUrl=(seriesDir && specFolder) ? ('https://www.3gpp.org/ftp/Specs/archive/'+seriesDir+'/'+specFolder+'/') : '';
-            const q=[tsRaw,r.version,r.release,String(r.section||'').replace(/[Â§§搂]/g,'§'),r.ref].filter(Boolean).join(' ');
+            const q=[tsRaw,_primary.version,_primary.release, String(_primary.section||'').replace(/[Â§§搂]/g,'§'),_primary.ref].filter(Boolean).join(' ');
             const searchUrl='https://duckduckgo.com/?q='+encodeURIComponent(q);
-            const viewerUrl = './spec_viewer.html?ts='+encodeURIComponent(tsRaw)+'&version='+encodeURIComponent(String(r.version||''))+'&section='+encodeURIComponent(String(r.section||''))+'&ref='+encodeURIComponent(String(r.ref||''))+'&release='+encodeURIComponent(String(r.release||''));
-            const titleParts=[String(r.ts||''), String(r.version||''), String(r.release||''), String(r.section||''), String(r.ref||'')].filter(Boolean);
-            return {viewerUrl, searchUrl, archiveUrl, title: titleParts.join(' ')};
+            const viewerUrl = './spec_viewer.html?ts='+encodeURIComponent(tsRaw)+'&version='+encodeURIComponent(String(_primary.version||''))+'&section='+encodeURIComponent(String(_primary.section||''))+'&ref='+encodeURIComponent(String(_primary.ref||''))+'&release='+encodeURIComponent(String(_primary.release||''));
+            parts.push('<div class="doc-spec"><h4>Specification Reference</h4>'+
+              '<div>Standard: '+(String(_primary.ts||''))+' '+(String(_primary.version||''))+' '+(String(_primary.release||''))+'</div>'+
+              '<div>Section: '+(String(_primary.section||''))+'</div>'+
+              '<div>Title: '+(String(_primary.ref||''))+'</div>'+
+              '<div><a href="'+viewerUrl+'" target="_blank" rel="noopener">Open In-App Spec Viewer</a></div>'+
+              '<div><a href="'+searchUrl+'" target="_blank" rel="noopener">Search specification on the Web</a></div>'+
+              (archiveUrl ? ('<div><a href="'+archiveUrl+'" target="_blank" rel="noopener">Open 3GPP official archive</a></div>') : '')+
+            '</div>');
           }
-          const refsList = [];
-          if(_primary && (_primary.ts || _primary.section || _primary.version || _primary.release || _primary.ref)){
-            refsList.push(_primary);
-          }
-          extraRefs.forEach(function(r){ if(r && (r.ts || r.section || r.version || r.release || r.ref)) refsList.push(r); });
-          var refsMd = '';
-          if(refsList.length){ refsMd = refsList.map(function(r){ var v=buildViewer(r); var label = String(r.ts||'') + (r.version?(' '+r.version):'') + (r.section?(' §'+String(r.section)):'' ) + (r.release?(' '+r.release):''); return '- ['+label+']('+v.viewerUrl+')'; }).join('\n'); }
           const header=((safeInfo&&safeInfo.header)||{}); const payload=((safeInfo&&safeInfo.payload)||{});
           const http=((safeInfo&&safeInfo.http)||m.http||{});
           const status=(safeInfo&&safeInfo.status);
           const body=(safeInfo&&safeInfo.body);
+          function kvTable(obj,title){
+            const rows=Object.keys(obj||{}).map(k=>'<tr><td>'+String(k)+'</td><td>'+String((obj&&obj[k])||'')+'</td></tr>').join('');
+            return rows?('<div class="doc-kv"><h4>'+title+'</h4><table><tbody>'+rows+'</tbody></table></div>'):'';
+          }
+          if(Object.keys(header||{}).length || Object.keys(payload||{}).length){
+            parts.push('<div class="doc-struct"><h4>Message Structure</h4>'+kvTable(header,'Header')+kvTable(payload,'Payload')+'</div>');
+          }
           if(Object.keys(http||{}).length || status!==undefined || body!==undefined){
             const rows=[];
             if(http&&http.method) rows.push('<tr><td>method</td><td>'+String(http.method)+'</td></tr>');
@@ -903,22 +867,37 @@ if(!nodes.length || !messages.length){
             if(status!==undefined) rows.push('<tr><td>status</td><td>'+String(status)+'</td></tr>');
             parts.push('<div class="doc-http"><h4>HTTP/SBI</h4><table><tbody>'+rows.join('')+'</tbody></table></div>');
           }
-          function normMd(s){ s=String(s||''); try{ s=s.replace(/\\n/g,'\n'); }catch(_){ } return s; }
-          function linkifySpec(s){
-            s=String(s||'');
-            s=s.replace(/(TS\s+\d+\.\d+)\s*[§搂脗Â]\s*([0-9.]+)\s*(V[0-9.]+)?/gi,function(_,ts,sec,ver){ var u='./spec_viewer.html?ts='+encodeURIComponent(ts)+'&version='+encodeURIComponent(ver||'')+'&section='+encodeURIComponent(sec); var label=ts+' §'+sec+(ver?(' '+ver):''); return '['+label+']('+u+')'; });
-            s=s.replace(/(RFC\s*\d+)\s*[§搂脗Â]\s*([0-9.]+)/gi,function(_,rid,sec){ var u='./spec_viewer.html?ts='+encodeURIComponent(rid)+'&section='+encodeURIComponent(sec); var label=rid+' §'+sec; return '['+label+']('+u+')'; });
-            return s;
+          const ieTree=(m.ie_tree||((safeInfo&&safeInfo.ie_tree)||[]));
+          const ieDict=(m.ie_dict||((safeInfo&&safeInfo.ie_dict)||{}));
+          if(Array.isArray(ieTree)&&ieTree.length){
+            function renderIE(items){
+              const stack=['<ul>'];
+              items.forEach(it=>{
+                stack.push('<li><strong>'+String(it.name||'')+'</strong> ['+String(it.presence||'')+'] '+(it.occurs?'('+String(it.occurs)+')':'')+'</li>');
+                if(Array.isArray(it.children)&&it.children.length){ stack.push(renderIE(it.children)); }
+              });
+              stack.push('</ul>'); return stack.join('');
+            }
+            parts.push('<div class="doc-ie"><h4>Information Elements</h4>'+renderIE(ieTree)+'</div>');
           }
-          let combinedText='';
-          if(_summary) combinedText += normMd(linkifySpec(_summary));
-          if(Array.isArray(_steps) ? _steps.length : (typeof _steps==='string' && _steps.trim())){
-            const stepsText = Array.isArray(_steps) ? _steps.map(String).join('\n') : String(_steps);
-            combinedText += (combinedText?'\n\n':'') + normMd(linkifySpec(stepsText));
+          if(ieDict && Object.keys(ieDict).length){
+            const rows=Object.keys(ieDict).map(k=>{
+              const v=ieDict[k]||{}; return '<tr><td>'+String(k)+'</td><td>'+String(v.doc||v.desc_en||'')+'</td></tr>';
+            }).join('');
+            parts.push('<div class="doc-iedict"><h4>IE Dictionary</h4><table><tbody>'+rows+'</tbody></table></div>');
           }
-          if(_comment) combinedText += (combinedText?'\n\n':'') + normMd(linkifySpec(_comment));
-          if(refsMd) combinedText += '\n\nReferences:\n\n' + refsMd;
-          commentContent.innerHTML = parser(combinedText || '<em>No additional documentation.</em>');
+          if(_summary){
+            parts.push('<div class="doc-summary"><h4>Summary</h4>'+parser(_summary)+'</div>');
+          }
+          if(Array.isArray(_steps) && _steps.length){
+            parts.push('<div class="doc-steps"><h4>Steps</h4><ol>'+_steps.map(s=>'\n<li>'+parser(s)+'</li>').join('')+'\n</ol></div>');
+          }else if(typeof _steps==='string' && _steps.trim()){
+            parts.push('<div class="doc-steps"><h4>Steps</h4>'+parser(_steps)+'</div>');
+          }
+          if(_comment){
+            parts.push('<div class="doc-comment"><h4>Comment</h4>'+parser(_comment)+'</div>');
+          }
+          commentContent.innerHTML=parts.join('<hr class="doc-sep"/>')||'<em>No additional documentation.</em>';
           }catch(e){ try{ commentContent.textContent='Unable to render message details.'; }catch(ex){} }
         });
         svg.appendChild(lbl);
@@ -1012,6 +991,12 @@ if(!nodes.length || !messages.length){
         bodyDiv.scrollTop =contentY*scale-cy;
       },{passive:false});
 
+      const hdr=document.getElementById('viewer-header');
+      const btns=document.createElement('div');
+      btns.style.float='right';
+      const b1=document.createElement('button'); b1.textContent='Expand'; b1.style.marginLeft='8px'; b1.onclick=()=>expandAll(true);
+      const b2=document.createElement('button'); b2.textContent='Collapse'; b2.style.marginLeft='8px'; b2.onclick=()=>expandAll(false);
+      btns.appendChild(b1); btns.appendChild(b2); hdr.appendChild(btns);
     });
   </script>
 
