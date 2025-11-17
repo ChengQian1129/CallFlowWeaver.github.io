@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CallFlowWeaver</title>
+  <link rel="icon" href="data:," />
+  <script>
+    (function(){ try{ var p=new URLSearchParams(location.search||''); var isLocal=/localhost|127\.0\.0\.1/.test((location&&location.hostname)||''); if(isLocal && !p.get('aiUrl')){ localStorage.setItem('viewerAI', JSON.stringify({ apiUrl:'http://127.0.0.1:8787/v1', apiKey:'', model:'gemini-2.5-pro' })); } }catch(_){ } })();
+  </script>
+  <script>
+    (function () {
+      var originalWarn = console.warn;
+      console.warn = function () {
+        if (arguments && arguments.length && typeof arguments[0] === 'string' && arguments[0].indexOf('Tailwind CSS in production') >= 0) {
+          return;
+        }
+        return originalWarn.apply(console, arguments);
+      };
+    })();
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      background: #0b0b0f;
+      color: #f4f4f5;
+      font-family: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    /* Toggle pill visuals */
+    .toggle {
+      width: 36px; height: 20px; border-radius: 9999px;
+      background: #3f3f46; position: relative;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+      transition: background-color .2s ease;
+    }
+    .toggle::after {
+      content: ""; position: absolute; top: 2px; left: 2px;
+      width: 16px; height: 16px; border-radius: 9999px;
+      background: #d4d4d8; transition: left .2s ease, background-color .2s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    }
+    .toggle.on { background: #22c55e; }
+    .toggle.on::after { left: 18px; background: #fff; }
+
+    /* Card base & compact mode tweaks */
+    .card { border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 16px; background: rgba(24,24,27,0.4); }
+    .card.selected { outline: 1px solid rgba(59,130,246,0.5); }
+    .card.compact { padding: 8px; }
+    .card.compact .text-sm { font-size: 0.75rem !important; }
+    .card.compact .px-4 { padding-left: 0.5rem !important; padding-right: 0.5rem !important; }
+    .card.compact .py-3 { padding-top: 0.25rem !important; padding-bottom: 0.25rem !important; }
+    .card.compact .gap-3 { gap: 0.5rem !important; }
+    .card.compact .gap-2 { gap: 0.25rem !important; }
+
+    /* Instance lanes visual bar */
+    .lanes-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; margin-bottom: 8px;
+      background: rgba(24,24,27,0.30); border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; }
+    .lane-chip { font-size: 12px; color: #cbd5e1; padding: 2px 8px; border: 1px solid rgba(255,255,255,0.12); border-radius: 9999px; background: rgba(39,39,42,0.35); }
+    .lanes-bar .title { font-size: 12px; color: #a1a1aa; font-weight: 600; }
+
+    /* Left sidebar: unified summary thickness for collapsed and open */
+    details > summary.leftsummary { padding: 8px 12px; font-size: 1rem; line-height: 1.25rem; }
+    details[open] > summary.leftsummary { padding: 8px 12px; font-size: 1rem; line-height: 1.25rem; }
+    /* Reduce card padding only when group is collapsed (Chrome supports :has) */
+    .card:has(details:not([open])) { padding: 8px; }
+
+    :root { --ai-x1:20%; --ai-y1:20%; --ai-x2:80%; --ai-y2:30%; --ai-x3:30%; --ai-y3:80%; }
+    body::before { content:""; position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0; transition: opacity .24s ease; background: radial-gradient(1200px 600px at var(--ai-x1) var(--ai-y1), rgba(59,130,246,0.20), transparent 60%), radial-gradient(1000px 500px at var(--ai-x2) var(--ai-y2), rgba(236,72,153,0.18), transparent 60%), radial-gradient(900px 600px at var(--ai-x3) var(--ai-y3), rgba(34,197,94,0.16), transparent 60%); animation: aiFlow 12s ease-in-out infinite; filter: saturate(1.2) blur(0.5px); }
+    .ai-on::before { opacity: 1; transition: opacity .22s cubic-bezier(.22,1,.36,1); }
+    .ai-out::before { opacity: 0; transition: opacity .42s cubic-bezier(.22,1,.36,1); }
+    @keyframes aiFlow { 0% { transform: translate3d(0,0,0); } 33% { transform: translate3d(8px,-6px,0); } 66% { transform: translate3d(-6px,8px,0); } 100% { transform: translate3d(0,0,0); } }
+    body { position: relative; z-index: 1; }
+  </style>
+
+</head>
+  <body>
+  <div id="app" class="min-h-screen bg-zinc-950 text-zinc-100"></div>
+  <script>
+    (function(){
+      try{
+        var s=document.createElement('div');
+        s.id='boot-status';
+        s.style.cssText='position:fixed;left:24px;top:24px;z-index:2147483600;background:#111827;color:#e5e7eb;border:1px solid #27272a;border-radius:8px;padding:8px 10px;font-size:12px;font-family:system-ui';
+        s.textContent='Booting viewer...';
+        document.body.appendChild(s);
+        window.__setBootStatus=function(t){ try{ if(s) s.textContent=String(t||''); }catch(_){} };
+        window.__removeBootStatus=function(){ try{ if(s) document.body.removeChild(s); }catch(_){} };
+      }catch(_){}
+      try{
+        window.addEventListener('error', function(ev){
+          try{
+            var fn = ev && ev.filename ? String(ev.filename) : '';
+            var ln = ev && ev.lineno ? String(ev.lineno) : '';
+            var cn = ev && ev.colno ? String(ev.colno) : '';
+            var msg = (ev && (ev.message||ev.error)) ? String(ev.message||ev.error) : 'Unknown script error';
+            var extra = (fn||ln||cn) ? (' at '+fn+ (ln?(':'+ln):'') + (cn?(':'+cn):'')) : '';
+            if(window.__setBootStatus) window.__setBootStatus('Runtime error: '+msg+extra);
+            try{ console.error('Runtime error:', msg, fn, ln, cn); }catch(_){ }
+          }catch(_){ }
+        });
+      }catch(_){ }
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        if(typeof window.pickRelevantIds!=='function'){
+          window.pickRelevantIds = function(prompt, allIds){
+            try{
+              var p = String(prompt||'').toLowerCase();
+              if(!Array.isArray(allIds)) return [];
+              var toks = p.split(/[^a-z0-9\u4e00-\u9fa5]+/).filter(function(t){ return !!t; });
+              var kw = ['registration','attach','setup','paging','service','pdp','sms','sgsap','map','ngap','nas','diameter','sip','http','4g','epc','5g'];
+              var out = allIds.map(function(x){
+                var id = String(x||''); var s = id.toLowerCase(); var score = 0;
+                for(var i=0;i<toks.length;i++){ var t=toks[i]; if(t && s.indexOf(t)>=0) score += 2; }
+                for(var j=0;j<kw.length;j++){ var k=kw[j]; if(k && s.indexOf(k)>=0) score += 1; }
+                if(p.indexOf('4g')>=0||p.indexOf('epc')>=0){ if(s.indexOf('epc')>=0||s.indexOf('s1ap')>=0||s.indexOf('sgsap')>=0||s.indexOf('map')>=0) score += 3; }
+                if(p.indexOf('5g')>=0){ if(s.indexOf('5gc')>=0||s.indexOf('ngap')>=0||s.indexOf('nas-5g')>=0) score += 3; }
+                return { id:id, sc:score };
+              });
+              out.sort(function(a,b){ return b.sc - a.sc; });
+              var picked = out.filter(function(it){ return it.sc>0; }).map(function(it){ return it.id; });
+              if(picked.length===0) picked = allIds.slice(0, 50);
+              return Array.from(new Set(picked)).slice(0, 500);
+            }catch(_){ return []; }
+          };
+        }
+      }catch(_){ }
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var p=new URLSearchParams(location.search||'');
+        var aiUrl = p.get('aiUrl') || '';
+        var aiKey = p.get('aiKey') || '';
+        var aiModel = p.get('aiModel') || '';
+        var aiOpenAI = p.get('aiOpenAI');
+        var aiStream = p.get('aiStream');
+        if(aiUrl || aiKey || aiModel || aiOpenAI!=null || aiStream!=null){
+          var cfg = { apiUrl: String(aiUrl||'').trim(), apiKey: String(aiKey||''), model: String(aiModel||'').trim() };
+          if(aiOpenAI!=null) cfg.openai = (aiOpenAI==='1'||aiOpenAI==='true');
+          if(aiStream!=null) cfg.stream = (aiStream==='1'||aiStream==='true');
+          var apply = function(){ try{ window.postMessage({type:'viewerAI.settings', apiUrl: cfg.apiUrl, apiKey: cfg.apiKey, model: cfg.model, openai: cfg.openai, stream: cfg.stream}, '*'); }catch(_){ } };
+          apply();
+          var iv = setInterval(function(){ try{ var ok = !!(window.viewerAI && window.viewerAIState); if(ok){ apply(); clearInterval(iv); } }catch(_){ } }, 500);
+        }
+      }catch(_){ }
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var base = String((window.__LLM_API_URL||'')).trim().replace(/\/+$/,'');
+        if(!base){ base = 'http://127.0.0.1:8787/v1'; }
+        var models = /\/v1$/.test(base) ? base + '/models' : (base.replace(/\/chat\/completions$/,'') + '/models');
+        fetch(models, { method:'GET' }).then(function(res){ return res.text().then(function(t){ try{ console.debug('[llm-probe]', models, res && res.status); }catch(_){ } try{ window.__lastProbe = { url: models, status: res && res.status, preview: String(t||'').slice(0,400) }; }catch(_){ } }); }).catch(function(e){ try{ window.__lastProbe = { url: models, error: String((e&&e.message)||e) }; }catch(_){ } });
+        window.__llmTestGenerate = function(txt){ try{ var url = String((window.__LLM_API_URL||'')).trim(); if(!url) url = 'http://127.0.0.1:8787/v1'; url = /\/v1$/.test(url) ? url + '/chat/completions' : url; var payload = { model: String(window.__LLM_API_MODEL||'gemini-2.5-pro'), messages: [{ role:'system', content:'Output strict JSON {"message_ids":[]}' }, { role:'user', content: String(txt||'Generate minimal NGAP/NAS registration steps') }] }; fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }).then(function(r){ return r.text().then(function(t){ try{ console.debug('[llm-test]', url, r && r.status); }catch(_){ } try{ window.__lastGen = { url: url, status: r && r.status, preview: String(t||'').slice(0,800) }; }catch(_){ } }); }); }catch(_){ } };
+      }catch(_){ }
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var applyFromLLM = function(){
+          try{
+            var url = String(window.__LLM_API_URL||'').trim();
+            var key = String(window.__LLM_API_KEY||'');
+            var model = String(window.__LLM_API_MODEL||'').trim();
+            var openai = !!window.__LLM_OPENAI;
+            var stream = !!window.__LLM_STREAM;
+            if(url){ window.postMessage({type:'viewerAI.settings', apiUrl:url, apiKey:key, model:model, openai:openai, stream:stream}, '*'); }
+          }catch(_){ }
+        };
+        applyFromLLM();
+        var iv2 = setInterval(function(){ try{ var ok = !!(window.viewerAI && window.viewerAIState); if(ok){ applyFromLLM(); clearInterval(iv2); } }catch(_){ } }, 500);
+      }catch(_){ }
+    })();
+  </script>
+  
+  
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var seedAllowed = params.has('seed');
+        var truth = [
+          {
+            id: 'NGAP-InitialUEMessage',
+            message: 'Initial UE Message',
+            name: 'Initial UE Message',
+            family: '5GC', protocol: 'NGAP', interface: 'N2', type: 'Control',
+            from: 'gNB', to: 'AMF', release: 'Rel-18',
+            roleset: ['gNB$A','AMF$A'], from_role: 'gNB$A', to_role: 'AMF$A',
+            primary_ref: { ts:'38.413', section: '8.2.1', version: 'v18.0.0', release:'Rel-18', ref:'InitialUEMessage' },
+            doc: { summary_en:'Initial UE Message', comment_md:'', title:'InitialUEMessage' },
+            ie_tree: [ { presence:'O', name:'TestIE', $ref:'TestIE', children:[] } ],
+            ie_dict: { 'TestIE': { desc_en:'Sample IE', default:'defaultValue' } }
+          },
+          {
+            id: 'NGAP-DownlinkNASTransport',
+            message: 'Downlink NAS Transport',
+            name: 'Downlink NAS Transport',
+            family: '5GC', protocol: 'NGAP', interface: 'N2', type: 'Control',
+            from: 'AMF', to: 'gNB', release: 'Rel-18',
+            roleset: ['AMF$A','gNB$A'], from_role: 'AMF$A', to_role: 'gNB$A',
+            primary_ref: { ts:'38.413', section: '8.x', version:'v18.0.0', release:'Rel-18', ref:'DownlinkNASTransport' },
+            doc: { summary_en:'Downlink NAS Transport', comment_md:'', title: 'DownlinkNASTransport' },
+            ie_tree: [], ie_dict: {}
+          }
+        ];
+        if(seedAllowed) localStorage.setItem('5gc_imported_truth', JSON.stringify(truth));
+        if(seedAllowed) localStorage.setItem('5gc_import_text', truth.map(function(t){ return JSON.stringify(t); }).join('\n'));
+        var canvasItem = {
+          uid: 'seed_'+Date.now(),
+          msg: truth[0],
+          ie_overrides: { 'TestIE': 'overrideValue' },
+          from_role: truth[0].from + '$A',
+          to_role: truth[0].to + '$A',
+          x: 150, y: 150, expanded: true, forceEdit: true
+        };
+        var caseData = { caseName: 'Seeded_Case', caseDesc: 'Seed via script', canvas: [canvasItem] };
+        if(seedAllowed) localStorage.setItem('5gc_current_case', JSON.stringify(caseData));
+        var casesMap = JSON.parse(localStorage.getItem('5gc_cases')||'{}');
+        if(seedAllowed){ casesMap['Seeded_Case'] = { caseName:'Seeded_Case', caseDesc:'Seed via script', canvas: [canvasItem], savedAt: Date.now() }; localStorage.setItem('5gc_cases', JSON.stringify(casesMap)); }
+        localStorage.setItem('viewerSettings', JSON.stringify({ inst:false, compactMode:false, globalEditMode:false, itemsPerPage:20 }));
+        if(seedAllowed) console.log('Seeded localStorage for 5GC viewer.');
+        // params already defined above; keep clear handler below
+        // var params = new URLSearchParams(location.search);
+        if (params.has('clear')) {
+          try {
+            localStorage.setItem('5gc_current_case', JSON.stringify({ caseName: 'Seeded_Case', caseDesc: 'Cleared via query', canvas: [] }));
+            console.log('Canvas cleared via query parameter');
+          } catch (e) { console.error('Clear seed error:', e); }
+        }
+      }catch(e){ console.error('Seed error:', e); }
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var p=new URLSearchParams(location.search||'');
+        var auto = p.get('autoGenerate') || p.get('aiAuto');
+        var prmpt = p.get('prompt') || '给我一个用户初始注册的信令流程';
+        try{ window.__truthReady = false; document.addEventListener('truthcache-ready', function(){ try{ window.__truthReady = true; }catch(_){ } }); }catch(_){ }
+        if(auto){
+          var tick=0; var ready=0; var wait=0;
+          var timer=setInterval(function(){
+            tick++;
+            try{
+              var settingsApplied = !!(window.__aiSettingsApplied);
+              var truthReady = !!(window.__truthReady);
+              if(!ready && window.viewerAI && window.viewerAIState && settingsApplied && truthReady){ ready=1; window.postMessage({type:'viewerAI.generate', prompt: prmpt}, '*'); }
+              if(ready){
+                var st=(window.viewerAIState&&window.viewerAIState.get&&window.viewerAIState.get())||{};
+                if(st.aiBusy===false){ if(wait===0){ wait=Date.now(); window.postMessage({type:'viewerAI.analyze'}, '*'); } else { window.postMessage({type:'viewerAI.preview'}, '*'); clearInterval(timer); } }
+              }
+            }catch(_){}
+            if(tick>480) { try{ if(window.showToast) window.showToast('Auto flow timeout','error'); }catch(_){ } clearInterval(timer); }
+          }, 500);
+        }
+      }catch(_){}
+    })();
+  </script>
+  <script>
+    (function(){
+      // offline fallback removed
+    })();
+  </script>
+  <script id="embedded-dataset" type="application/json">
+{"schema_version": "2.0", "id": "5GC.NGAP.NGSetupRequest.gNB->AMF@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "N/A", "message": "NG Setup Request", "type": "Request", "from": "gNB", "to": "AMF", "release": "Rel-18", "primary_ref": {"ts": "TS 38.413", "section": "§9.2.6.1", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 38.413 §9.2.6.1 V18.4.0"}, "aliases": ["NGSetupRequest"], "roleset": ["gNB$A","AMF$A"], "from_role": "gNB$A", "to_role": "AMF$A", "doc": {"summary_en": "The gNB sends the NG Setup Request to an AMF to establish the NG interface instance between them.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NGAP.NGSetupResponse.AMF->gNB@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "NGSetup", "message": "NG Setup Response", "type": "Response", "from": "AMF", "to": "gNB", "release": "Rel-18", "primary_ref": {"ts": "TS 38.413", "section": "§9.2.1.2", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 38.413 §9.2.1.2 V18.4.0"}, "aliases": ["NGSetupResponse"], "roleset": ["AMF$A","gNB$A"], "from_role": "AMF$A", "to_role": "gNB$A", "doc": {"summary_en": "Acknowledges NG Setup Request and finalizes N2 establishment.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NGAP.InitialUEMessage.gNB->AMF@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "N/A", "message": "Initial UE Message", "type": "Request", "from": "gNB", "to": "AMF", "release": "Rel-18", "primary_ref": {"ts": "38.413", "section": "8.6.1", "version": "18.4.0", "release": "Rel-18", "ref": "TS 38.413 §8.6.1 V18.4.0"}, "roleset": ["gNB$A","AMF$A"], "from_role": "gNB$A", "to_role": "AMF$A", "doc": {"summary_en": "Forward the first uplink NAS message with UE context.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NGAP.DownlinkNASTransport.AMF->gNB@Rel-18", "family": "5GC", "protocol": "NGAP", "interface": "N2", "operation": "N/A", "message": "Downlink NAS Transport", "type": "Request", "from": "AMF", "to": "gNB", "release": "Rel-18", "primary_ref": {"ts": "TS 38.413", "section": "§9.2.5.2", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 38.413 §9.2.5.2 V18.4.0"}, "aliases": ["DownlinkNASTransport"], "roleset": ["AMF$A","gNB$A"], "from_role": "AMF$A", "to_role": "gNB$A", "doc": {"summary_en": "Forward a NAS message to the UE via NGAP.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NAS-5G.RegistrationRequest.UE->AMF@Rel-18", "family": "5GC", "protocol": "NAS-5G", "interface": "N1", "operation": "Registration", "message": "Registration Request", "type": "Request", "from": "UE", "to": "AMF", "release": "Rel-18", "primary_ref": {"ts": "TS 24.501", "section": "§8.2.6", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 24.501 §8.2.6 V18.4.0"}, "aliases": ["Initial Registration"], "roleset": ["UE$A","AMF$A"], "from_role": "UE$A", "to_role": "AMF$A", "doc": {"summary_en": "UE initiates registration to the 5G system.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+{"schema_version": "2.0", "id": "5GC.NAS-5G.SecurityModeCommand.AMF->UE@Rel-18", "family": "5GC", "protocol": "NAS-5G", "interface": "N1", "operation": "Security Mode Control", "message": "Security Mode Command", "type": "Request", "from": "AMF", "to": "UE", "release": "Rel-18", "primary_ref": {"ts": "TS 24.501", "section": "§8.2.5.2", "version": "V18.4.0", "release": "Rel-18", "ref": "TS 24.501 §8.2.5.2 V18.4.0"}, "roleset": ["AMF$A","UE$A"], "from_role": "AMF$A", "to_role": "UE$A", "doc": {"summary_en": "Activate NAS security with selected algorithms.", "steps": "" }, "ie_tree": [], "ie_dict": {}}
+  </script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        if(!params.has('seed')) return;
+        var el=document.getElementById('embedded-dataset');
+        if(el && el.textContent && el.textContent.trim()){
+          var lines=el.textContent.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;});
+          var arr=[];
+          for(var i=0;i<lines.length;i++){ try{ arr.push(JSON.parse(lines[i])); }catch(e){} }
+          if(arr.length){
+            localStorage.setItem('5gc_imported_truth', JSON.stringify(arr));
+            localStorage.setItem('5gc_import_text', lines.join('\n'));
+            try{
+              window.exportMessages = arr.map(function(m,i){
+                var h=(m&&m.info&&m.info.header)||m.header||{};
+                var proto=h.protocol||m.protocol||m.family||'';
+                var iface=h.interface||m.interface||'';
+                var release=h.release||m.release||'';
+                var id=h.id||m.id||'';
+                var doc=(m&&m.info&&m.info.doc) || m.doc || {};
+                var nameRaw=h.msg||m.message||m.name||'';
+                var msgName=((doc&&typeof doc.title==='string'&&doc.title.trim())?doc.title.trim():nameRaw).replace(/[_-]+/g,' ').trim();
+                var label=m.label||((i+1)+' '+(msgName||'Message'));
+                var comment=m.comment || doc.comment_md || '';
+                var primary = m.primary_ref || (m.info && m.info.primary_ref) || null;
+                if(primary){ if(primary.section) primary.section=String(primary.section).replace(/搂/g,'§'); if(primary.ref) primary.ref=String(primary.ref).replace(/搂/g,'§'); }
+                return {from:m.from,to:m.to,label,
+                  info:{header:{msg:msgName,protocol:proto,interface:iface,release,id},payload:(m.info&&m.info.payload)||m.payload||{}},
+                  doc:doc,
+                  comment:comment,
+                  primary_ref: primary,
+                  ie_tree: m.ie_tree || ((m.info && m.info.ie_tree)||[]),
+                  ie_dict: m.ie_dict || ((m.info && m.info.ie_dict)||{})
+                };
+              });
+              window.lanes = function(){
+                var set=new Set();
+                (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); });
+                return Array.from(set);
+              };
+              try{
+                var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+                var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
+                /* 不自动创建 Case：严格区分消息与 Case */
+              }catch(e){}
+            }catch(e){}
+          }
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script>
+    (function(){
+      var open = function(){ return new Promise(function(res,rej){ try{ var req = indexedDB.open('viewer', 1); req.onupgradeneeded = function(ev){ var db = ev.target.result; if(!db.objectStoreNames.contains('truth')) db.createObjectStore('truth', { keyPath:'id' }); }; req.onsuccess = function(ev){ res(ev.target.result); }; req.onerror = function(ev){ rej(ev.target.error||new Error('idb')); }; }catch(e){ rej(e); } }); };
+      var putRaw = function(text){ return open().then(function(db){ return new Promise(function(res,rej){ try{ var tx=db.transaction(['truth'],'readwrite'); var st=tx.objectStore('truth'); st.put({id:'raw', text:String(text||''), ts:Date.now()}); tx.oncomplete=function(){ res(true); }; tx.onerror=function(ev){ rej(ev.target.error||new Error('idb_put')); }; }catch(e){ rej(e); } }); }); };
+      var getRaw = function(){ return open().then(function(db){ return new Promise(function(res,rej){ try{ var tx=db.transaction(['truth'],'readonly'); var st=tx.objectStore('truth'); var req=st.get('raw'); req.onsuccess=function(ev){ var r=ev.target.result; res(r&&r.text||''); }; req.onerror=function(ev){ rej(ev.target.error||new Error('idb_get')); }; }catch(e){ rej(e); } }); }); };
+      window.truthDb = { putRaw: putRaw, getRaw: getRaw };
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var autoload = params.get('autoload');
+        if(autoload){
+          fetch(autoload).then(function(r){return r.text();}).then(function(t){
+            var lines=t.split(/\r?\n/).map(function(s){return s.trim();}).filter(function(s){return !!s;});
+            var arr=[]; lines.forEach(function(s){ try{ arr.push(JSON.parse(s)); }catch(e){} });
+            if(arr.length){
+              try{ if(window.truthDb && typeof window.truthDb.putRaw==='function') window.truthDb.putRaw(t); }catch(_e){}
+              try{ localStorage.setItem('5gc_imported_truth', JSON.stringify(arr)); }catch(_e){}
+              try{ localStorage.setItem('5gc_import_text', lines.join('\n')); }catch(_e){}
+              try{
+                var existingCase = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+                var hasCanvas = Array.isArray(existingCase.canvas) && existingCase.canvas.length>0;
+                /* 不自动创建 Case：严格区分消息与 Case */
+              }catch(e){}
+              try{
+                window.exportMessages = arr.map(function(m,i){
+                  var h=(m&&m.info&&m.info.header)||m.header||{};
+                  var proto=h.protocol||m.protocol||m.family||'';
+                  var iface=h.interface||m.interface||'';
+                  var release=h.release||m.release||'';
+                  var id=h.id||m.id||'';
+                  var doc=(m&&m.info&&m.info.doc) || m.doc || {};
+                  var nameRaw=h.msg||m.message||m.name||'';
+                  var msgName=((doc&&typeof doc.title==='string'&&doc.title.trim())?doc.title.trim():nameRaw).replace(/[_-]+/g,' ').trim();
+                  var label=m.label||((i+1)+' '+(msgName||'Message'));
+                  var comment=m.comment || doc.comment_md || '';
+                  var primary = m.primary_ref || (m.info && m.info.primary_ref) || null;
+                  if(primary){ if(primary.section) primary.section=String(primary.section).replace(/搂/g,'§'); if(primary.ref) primary.ref=String(primary.ref).replace(/搂/g,'§'); }
+                  return {from:m.from,to:m.to,label,
+                    info:{header:{msg:msgName,protocol:proto,interface:iface,release,id},payload:(m.info&&m.info.payload)||m.payload||{}},
+                    doc:doc,
+                    comment:comment,
+                    primary_ref: primary,
+                    ie_tree: m.ie_tree || ((m.info && m.info.ie_tree)||[]),
+                    ie_dict: m.ie_dict || ((m.info && m.info.ie_dict)||{})
+                  };
+                });
+                window.lanes = function(){
+                  var set=new Set();
+                  (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); });
+                  return Array.from(set);
+                };
+                try{
+                  var existingCase2 = JSON.parse(localStorage.getItem('5gc_current_case')||'{}');
+                  var hasCanvas2 = Array.isArray(existingCase2.canvas) && existingCase2.canvas.length>0;
+                  /* 不自动创建 Case：严格区分消息与 Case */
+                }catch(e){}
+              }catch(e){}
+            }
+          }).catch(function(e){
+            try{ console.error('Autoload fetch failed:', e); }catch(_e){}
+            try{ console.error('Autoload 读取失败：', e); }catch(_e){}
+          });
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script>
+    (function(){
+      try{
+        var params = new URLSearchParams(location.search);
+        var ingest = function(t){
+          try{ t = String(t||'').replace(/^\uFEFF/, ''); }catch(_e){}
+          var arr=[];
+          try{ var parsed = JSON.parse(t); if(Array.isArray(parsed)) arr = parsed.slice(); }catch(_e){}
+          if(!Array.isArray(arr) || arr.length===0){
+            var lines=t.split(/\r?\n/);
+            var out=[]; for(var i=0;i<lines.length;i++){ var s=(lines[i]||'').trim(); if(!s) continue; if(s.indexOf('#')===0) continue; if(s.indexOf('//')===0) continue; try{ out.push(JSON.parse(s)); }catch(_e){} }
+            arr = out;
+          }
+          if(!arr.length) return;
+          try{ if(window.truthDb && typeof window.truthDb.putRaw==='function') window.truthDb.putRaw(t); }catch(_e){}
+          try{ localStorage.setItem('5gc_imported_truth', JSON.stringify(arr)); localStorage.setItem('5gc_import_text', String(t)); }catch(_e){}
+          try{ window.__truthCache = arr; document.dispatchEvent(new CustomEvent('truthcache-ready')); setTimeout(function(){ try{ document.dispatchEvent(new CustomEvent('truthcache-ready')); }catch(_e){} }, 500); }catch(_e){}
+          try{
+            window.exportMessages = arr.map(function(m,i){
+              var h=(m&&m.info&&m.info.header)||m.header||{};
+              var proto=h.protocol||m.protocol||m.family||'';
+              var iface=h.interface||m.interface||'';
+              var release=h.release||m.release||'';
+              var id=h.id||m.id||'';
+              var doc=(m&&m.info&&m.info.doc) || m.doc || {};
+              var nameRaw=h.msg||m.message||m.name||'';
+              var msgName=((doc&&typeof doc.title==='string'&&doc.title.trim())?doc.title.trim():nameRaw).replace(/[_-]+/g,' ').trim();
+              var label=m.label||((i+1)+' '+(msgName||'Message'));
+              var comment=m.comment || doc.comment_md || '';
+              var primary = m.primary_ref || (m.info && m.info.primary_ref) || null;
+              if(primary){ if(primary.section) primary.section=String(primary.section).replace(/搂/g,'§'); if(primary.ref) primary.ref=String(primary.ref).replace(/搂/g,'§'); }
+              return {from:m.from,to:m.to,label,
+                info:{header:{msg:msgName,protocol:proto,interface:iface,release,id},payload:(m.info&&m.info.payload)||m.payload||{}},
+                doc:doc,
+                comment:comment,
+                primary_ref: primary,
+                ie_tree: m.ie_tree || ((m.info && m.info.ie_tree)||[]),
+                ie_dict: m.ie_dict || ((m.info && m.info.ie_dict)||{})
+              };
+            });
+            window.lanes = function(){ var set=new Set(); (arr||[]).forEach(function(m){ if(m&&m.from) set.add(m.from); if(m&&m.to) set.add(m.to); }); return Array.from(set); };
+          }catch(e){}
+          try{ /* no auto case seeding; import-only */ }catch(_e){}
+          try{ if(window.__appMounted){ if(!window.__ingestReloaded){ window.__ingestReloaded = true; location.reload(); } } }catch(_e){}
+        };
+        if(location.protocol==='file:'){
+          var existing = [];
+          try{ existing = JSON.parse(localStorage.getItem('5gc_imported_truth')||'[]'); }catch(_e){}
+          var needsImportUI = !(Array.isArray(existing) && existing.length>0) || (Array.isArray(existing) && existing.length < 100);
+          if(needsImportUI){
+            var overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.8);color:#e5e7eb;display:flex;align-items:center;justify-content:center;z-index:2147483600;font-family:Inter,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
+            overlay.innerHTML = '<div style="background:#111827;border:1px solid #27272a;border-radius:12px;padding:20px;max-width:520px;width:90%">'
+              + '<div style="font-weight:600;margin-bottom:8px">导入默认数据</div>'
+              + '<div style="font-size:13px;color:#a1a1aa;margin-bottom:12px">由于浏览器安全策略，直接从文件打开时无法自动读取同目录的数据文件。请选择 <code>non5gc_rel18.final.rich.jsonl</code> 以导入。</div>'
+              + '<input id="file-pick" type="file" accept=".jsonl,.txt,application/json" style="width:100%;margin-bottom:12px;color:#e5e7eb" />'
+              + '<div style="font-size:12px;color:#94a3b8">提示：选择后将自动导入并刷新界面。</div>'
+              + '</div>';
+            document.body.appendChild(overlay);
+            var input = overlay.querySelector('#file-pick');
+            if(input){ input.addEventListener('change', function(){ try{ var f=input.files && input.files[0]; if(!f) return; var r=new FileReader(); r.onload=function(){ try{ ingest(String(r.result||'')); }catch(e){} try{ document.body.removeChild(overlay); }catch(e){} try{ location.reload(); }catch(e){} }; r.readAsText(f); }catch(e){} }); }
+          }
+        }else{
+          var params = new URLSearchParams(location.search||'');
+          var src = (params.get('dataset') || params.get('autoload') || './non5gc_rel18.final.rich.jsonl').trim();
+          if(src === '__synthetic5000'){
+            try{
+              var lines=[];
+              for(var i=0;i<5000;i++){
+                lines.push(JSON.stringify({
+                  id: 'SYNTH.'+i,
+                  message: 'Synthetic Message '+i,
+                  from: 'UE',
+                  to: 'NW'
+                }));
+              }
+              ingest(lines.join('\n'));
+            }catch(_e){}
+          }else{
+            var tryFetch=function(u){ return fetch(u).then(function(r){ if(!r.ok) throw new Error('HTTP '+r.status); return r.text(); }); };
+            tryFetch(src).then(function(t){ ingest(t); }).catch(function(e){
+              var alt = (src === './non5gc_rel18.final.rich.jsonl') ? './non5gc_rel18.final.rich.json' : '';
+              if(alt){ tryFetch(alt).then(function(t){ ingest(t); }).catch(function(_e){ try{ console.error('Dataset autoload failed:', e); }catch(_e){} }); }
+              else{ try{ console.error('Dataset autoload failed:', e); }catch(_e){} }
+            });
+          }
+        }
+      }catch(e){}
+    })();
+  </script>
+  <script>
+    (function(){
+      var params = new URLSearchParams(location.search);
+      // 同步XHR兜底已移除，避免阻塞导致空白屏。依赖异步fetch与autoload/seed路径。
+    })();
+  </script>
+  <script>
+    (function(){
+      try{ var s=document.createElement('script'); s.src='llm.local.js'; s.defer=true; document.head.appendChild(s); }catch(_){ }
+      function load(src, cb){ var s=document.createElement('script'); s.src=src; s.onload=cb; s.onerror=cb; document.head.appendChild(s); }
+      function ensureReact(cb){
+        if(window.React && window.ReactDOM){ cb(); return; }
+        var list=[
+          'https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js',
+          'https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js',
+          'https://unpkg.com/react@18.2.0/umd/react.production.min.js',
+          'https://unpkg.com/react-dom@18.2.0/umd/react-dom.production.min.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js',
+          'https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js'
+        ];
+        var i=0;
+        function next(){
+          if(window.React && window.ReactDOM){ cb(); return; }
+          if(i>=list.length){
+            try{
+              console.error('Failed to load React/ReactDOM from CDN');
+              var el = document.getElementById('app');
+              if(el){ el.innerHTML = '<div style="padding:16px;color:#ef4444;font-family:system-ui">React/ReactDOM 加载失败，请检查网络或 CDN 访问策略</div>'; }
+              if(window.__setBootStatus) window.__setBootStatus('React/ReactDOM 加载失败');
+            }catch(_){}
+            return;
+          }
+          try{ if(window.__setBootStatus) window.__setBootStatus('Loading React: '+list[i]); }catch(_){}
+          var src = list[i++];
+          try{ src = src + (src.indexOf('?')>=0 ? '&' : '?') + 'v=' + Date.now(); }catch(_){ }
+          load(src, next);
+        }
+        next();
+      }
+      function loadBundle(){ var v=String(Date.now()); var params; try{ params=new URLSearchParams(location.search||''); }catch(_){}
+        var primary = './tmp_bundle_online.js?v='+v;
+        var s=document.createElement('script'); s.src=primary; s.charset='utf-8';
+        s.onload=function(){ try{ if(window.__setBootStatus) window.__setBootStatus('Bundle loaded'); }catch(_){} };
+        s.onerror=function(){ try{ if(window.__setBootStatus) window.__setBootStatus('Bundle load failed, trying fallback'); }catch(_){}
+          try{ var f=document.createElement('script'); f.src='./tmp_bundle_online.js?v='+v; f.charset='utf-8'; f.onload=function(){ try{ if(window.__setBootStatus) window.__setBootStatus('Fallback bundle loaded'); }catch(_){} }; f.onerror=function(){ try{ if(window.__setBootStatus) window.__setBootStatus('Fallback bundle load failed'); }catch(_){} }; document.body.appendChild(f); }catch(_){}
+        };
+        document.body.appendChild(s);
+      }
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', function(){ ensureReact(loadBundle); }); else ensureReact(loadBundle);
+    })();
+  </script>
+  <script>
+    (function(){
+      function loadToolbar(){ try{ var s=document.createElement('script'); s.src='./stylea_bridge_toolbar.js'; s.defer=true; document.head.appendChild(s); }catch(_){} }
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', loadToolbar); else loadToolbar();
+    })();
+  </script>
+  <script>
+    // For spec links / PDFs clicked inside the app, open in new tab to avoid losing scroll/focus state
+    (function(){
+      document.addEventListener('click', function(e){
+        var a = e.target && e.target.closest ? e.target.closest('a') : null;
+        if(!a) return;
+        var href = String(a.getAttribute('href')||'');
+        if(/preview\/spec_viewer\.html|\.pdf$/i.test(href)){
+          a.target = '_blank';
+          a.rel = 'noopener';
+        }
+      }, true);
+    })();
+  </script>
+</body>
+</html>
