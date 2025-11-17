@@ -22,24 +22,56 @@
   <script>
     (function(){
       function get(k){ return new URLSearchParams(location.search).get(k)||''; }
-      function normSection(s){ s=String(s||'').trim().replace(/[Â§§搂]/g,'§'); const m=s.match(/(\d+(?:\.\d+)*)/); return m?m[1]:''; }
-      function parseTS(raw){ const t=String(raw||'').trim(); const num=t.replace(/^\s*TS\s*/i,''); const m=num.match(/^(\d+)\.(\d{3})$/); return m?{series:m[1], spec:m[2]}:null; }
+      function normSection(s){
+        s=String(s||'').trim().replace(/[Â§§搂脗]/g,'§'); // 扫掉编码异常的章节符号
+        const m=s.replace(/脗搂/g,'§').match(/(\d+(?:\.\d+)*)/);
+        return m?m[1]:'';
+      }
+      function normTitle(s){
+        s=String(s||'').replace(/[Â§§搂脗]/g,' ');
+        s=s.replace(/[^0-9a-z]+/gi,' ');
+        return s.toLowerCase().trim().replace(/\s+/g,' ');
+      }
+      function stripTitleNumbers(s){ return String(s||'').replace(/^(?:\d+\s*)+/,'').trim(); }
+      function parseTS(raw){
+        const t=String(raw||'').trim();
+        const num=t.replace(/^\s*TS\s*/i,'');
+        const m = num.match(/(\d+)\.(\d{3})/); // allow extra tokens after spec number
+        return m ? { series: m[1], spec: m[2] } : null;
+      }
       function toEtsiId(ts){ return ts?('1'+ts.series+ts.spec):''; }
-      function vDigits(v){ v=String(v||'').trim(); const mv=v.match(/V?(\d+)\.(\d+)\.(\d+)/i); if(!mv) return ''; return (mv[1].padStart(2,'0')+'.'+mv[2].padStart(2,'0')+'.'+mv[3].padStart(2,'0')).replace(/\./g,''); }
-      function dirVer(v){ v=String(v||'').trim(); const mv=v.match(/V?(\d+)\.(\d+)\.(\d+)/i); if(!mv) return v.replace(/^V/i,''); return (mv[1].padStart(2,'0')+'.'+mv[2].padStart(2,'0')+'.'+mv[3].padStart(2,'0')); }
+      function vDigits(v){
+        v=String(v||'').trim();
+        let mv=v.match(/V?(\d+)(?:\.(\d+))?(?:\.(\d+))?/i);
+        if(!mv) return '';
+        const a=(mv[1]||'0').padStart(2,'0');
+        const b=(mv[2]||'0').padStart(2,'0');
+        const c=(mv[3]||'0').padStart(2,'0');
+        return (a+b+c);
+      }
+      function dirVer(v){
+        v=String(v||'').trim();
+        let mv=v.match(/V?(\d+)(?:\.(\d+))?(?:\.(\d+))?/i);
+        if(!mv) return v.replace(/^V/i,'');
+        const a=(mv[1]||'0').padStart(2,'0');
+        const b=(mv[2]||'0').padStart(2,'0');
+        const c=(mv[3]||'0').padStart(2,'0');
+        return (a+'.'+b+'.'+c);
+      }
       function etsiGroup(id){ const base=Math.floor(parseInt(id,10)/100)*100; return (String(base).padStart(6,'0')+'_'+String(base+99).padStart(6,'0')); }
       function buildCandidates(tsRaw, version, section, ref){
-        const out=[]; const ts=parseTS(tsRaw); const sec=normSection(section); const v=vDigits(version);
+        const out=[]; const ts=parseTS(tsRaw); const sec=normSection(section); const secTitle=normTitle(section); const hasSectionHint=Boolean(sec||secTitle||String(section||'').trim()); const v=vDigits(version);
         if(ts){
           const id=toEtsiId(ts); const group=etsiGroup(id);
           ['20','50','60','70'].forEach(function(suf){ out.push({
-            label:'ETSI deliver (PDF '+version+', '+suf+')',
-            url:'https://www.etsi.org/deliver/etsi_ts/'+group+'/'+id+'/'+dirVer(version)+'_'+suf+'/ts_'+id+'v'+v+'p.pdf'+(sec?'#page=':''),
-            pageFromIndex: !!sec
+            label:'Local ETSI mirror (PDF '+version+', '+suf+')',
+            url:'./specs/etsi/'+group+'/'+id+'/'+dirVer(version)+'_'+suf+'/ts_'+id+'v'+v+'p.pdf',
+            pageFromIndex: hasSectionHint
           }); });
           ['20','50','60','70'].forEach(function(suf){ out.push({
-            label:'Local ETSI mirror (PDF '+version+', '+suf+')',
-            url:'./specs/etsi/'+group+'/'+id+'/'+dirVer(version)+'_'+suf+'/ts_'+id+'v'+v+'p.pdf'+(sec?'#page=':''),
+            label:'ETSI deliver (PDF '+version+', '+suf+')',
+            url:'https://www.etsi.org/deliver/etsi_ts/'+group+'/'+id+'/'+dirVer(version)+'_'+suf+'/ts_'+id+'v'+v+'p.pdf',
+            pageFromIndex: hasSectionHint
           }); });
           out.push({ label:'Local 3GPP mirror (directory)', url:'./specs/3gpp/'+ts.series+'_series/'+ts.series+'.'+ts.spec+'/' });
           out.push({ label:'3GPP archive (directory)', url:'https://www.3gpp.org/ftp/Specs/archive/'+ts.series+'_series/'+ts.series+'.'+ts.spec+'/' });
@@ -58,35 +90,279 @@
         out.push({ label:'Web search', url:'https://duckduckgo.com/?q='+encodeURIComponent(q)});
         return out;
       }
-      const tsRaw=get('ts'), version=get('version'), section=get('section'), ref=get('ref');
-      document.getElementById('title').textContent=(tsRaw||'')+' '+(version||'')+' '+(section||'');
+      const tsRaw=get('ts'), versionRaw=get('version'), section=get('section'), ref=get('ref');
+      const embed=get('embed')||'';
+      const paramsAll = new URLSearchParams(location.search||'');
+      const localOnly = (paramsAll.get('remoteOK')!=='1');
+      document.getElementById('title').textContent=(tsRaw||'')+' '+(versionRaw||'')+' '+(section||'');
       document.getElementById('info').textContent=(ref||'');
       const linksDiv=document.getElementById('links');
-      const candidates=buildCandidates(tsRaw, version, section, ref);
-
-      // try load indices
-      let specIndex={}; let sectionIndex={};
-      try{ fetch('./specIndex.json').then(r=>r.json()).then(j=>{ specIndex=j; }).catch(()=>{}); }catch(e){}
-      try{ fetch('./specSectionIndex.json').then(r=>r.json()).then(j=>{ sectionIndex=j; }).catch(()=>{}); }catch(e){}
-
-      const key=(String(tsRaw||'').trim()+'@'+String(version||'').trim());
-      function applyIndex(){
-        let injected=false;
-        const mapped=specIndex && specIndex[key];
-        if(mapped){
-          const secNorm=normSection(section);
-          let url=mapped;
-          const pages = sectionIndex && sectionIndex[key];
-          if(pages && pages[secNorm]) url = url + '#page=' + pages[secNorm];
-          candidates.unshift({ label:'Index mapped (local)', url });
-          injected=true;
+      let specIndex={}; let sectionIndex={}; let outlineIndex={}; let titleIndex={};
+      async function loadJson(paths){
+        for(let i=0;i<paths.length;i++){
+          try{
+            const r=await fetch(paths[i]); if(r && r.ok) return await r.json();
+          }catch(_){}
         }
-        candidates.forEach(function(c){ const a=document.createElement('a'); a.href=c.url; a.textContent=c.label; a.target='_blank'; a.rel='noopener'; linksDiv.appendChild(a); });
-        const best=candidates[0]||{};
-        document.getElementById('frame').src=best.url||'';
+        return {};
       }
-      // apply after a short tick to allow fetch promises to resolve
-      setTimeout(applyIndex, 150);
+      const loadSpecIndex = loadJson(['./specIndex.json','/preview/specIndex.json']).then(j=>specIndex=j||{});
+      const loadSectionIndex = loadJson(['./specSectionIndex.json','/preview/specSectionIndex.json']).then(j=>sectionIndex=j||{});
+      const loadOutlineIndex = loadJson(['./specOutlineIndex.json','/preview/specOutlineIndex.json']).then(j=>outlineIndex=j||{});
+      const loadTitleIndex = loadJson(['./specTitleIndex.json','/preview/specTitleIndex.json']).then(j=>titleIndex=j||{});
+      function parseVerParts(v){
+        const m=String(v||'').match(/(\d+)(?:\.(\d+))?(?:\.(\d+))?/);
+        return m ? [parseInt(m[1]||'0',10),parseInt(m[2]||'0',10),parseInt(m[3]||'0',10)] : [0,0,0];
+      }
+      function cmpVer(a,b){ for(let i=0;i<3;i++){ if(a[i]>b[i]) return 1; if(a[i]<b[i]) return -1; } return 0; }
+      function keyVariants(tsRaw, version){
+        const ts=String(tsRaw||'').trim();
+        const v=String(version||'').trim();
+        const vNoV=v.replace(/^V/i,'');
+        // 3GPP 路径常在前面补一位“1”，这里补充一组可选键
+        let tsWith1 = ts;
+        const m = ts.match(/^TS\s+(\d+)\.(\d+)/i);
+        if(m && m[1].length && m[1][0]!=='1'){
+          tsWith1 = 'TS '+('1'+m[1])+'.'+m[2];
+        }
+        const variants=[
+          ts+'@'+v,
+          ts+'@'+vNoV,
+          ts+'@'+(vNoV.split('.').slice(0,2).join('.')||vNoV),
+          ts+'@'+(vNoV.split('.').slice(0,1).join('.')||vNoV),
+          ts+'@',
+          ts,
+          tsWith1+'@'+v,
+          tsWith1+'@'+vNoV,
+          tsWith1
+        ];
+        return Array.from(new Set(variants.filter(Boolean)));
+      }
+      function pickBestKey(ts, ver){
+        if(!specIndex) return { key:'', ver:'' };
+        const variants=keyVariants(ts, ver);
+        const tsPrefixes = Array.from(new Set(variants.map(v=>String(v).split('@')[0]).filter(Boolean)));
+        // 额外加入去掉 "TS " 前缀的形式，兼容 specIndex 中的“29.274@...”键
+        tsPrefixes.forEach(function(p){
+          const bare = p.replace(/^TS\s*/i,'').trim();
+          if(bare) tsPrefixes.push(bare);
+        });
+        const allKeys = Object.keys(specIndex||{});
+        let candLocal=[], candRemote=[];
+        tsPrefixes.forEach(function(prefix){
+          const low=(prefix+'@').toLowerCase();
+          allKeys.forEach(function(k){
+            if(!k.toLowerCase().startsWith(low)) return;
+            const v=specIndex[k];
+            const isRemote = typeof v==='string' && /^https?:\/\//i.test(v);
+            (isRemote?candRemote:candLocal).push(k);
+          });
+        });
+        function pickFrom(arr){
+          if(!arr.length) return '';
+          const reqParts = parseVerParts(ver);
+          const exact = arr.find(function(k){
+            const kv = k.split('@')[1]||'';
+            return ver && cmpVer(parseVerParts(kv), reqParts)===0;
+          });
+          if(exact) return exact;
+          return arr.reduce(function(a,b){
+            const va=parseVerParts((a.split('@')[1]||''));
+            const vb=parseVerParts((b.split('@')[1]||''));
+            return cmpVer(vb, va)>0 ? b : a;
+          });
+        }
+        // 优先选本地最高版本，其次远程
+        const bestLocal = pickFrom(Array.from(new Set(candLocal)));
+        const bestRemote = pickFrom(Array.from(new Set(candRemote)));
+        const best = bestLocal || bestRemote || '';
+        return { key: best, ver:(best.split('@')[1]||'') };
+      }
+      function findBestWithPage(tsRaw, section, mergedIndex){
+        if(!mergedIndex || !specIndex || !section) return null;
+        const variants = keyVariants(tsRaw, '');
+        const prefixes = Array.from(new Set(variants.map(v=>String(v).split('@')[0]).filter(Boolean)));
+        prefixes.forEach(function(p){ const bare=p.replace(/^TS\s*/i,'').trim(); if(bare) prefixes.push(bare); });
+        const allKeys = Object.keys(specIndex||{});
+        let cand=[];
+        prefixes.forEach(function(prefix){
+          const low=(prefix+'@').toLowerCase();
+          allKeys.forEach(function(k){ if(k.toLowerCase().startsWith(low)) cand.push(k); });
+        });
+        cand = Array.from(new Set(cand));
+        const scored=[];
+        cand.forEach(function(k){
+          const idx = mergedIndex[k];
+          if(!idx || !(section in idx)) return;
+          const ver = (k.split('@')[1]||'');
+          const isLocal = typeof specIndex[k]==='string' && !/^https?:\/\//i.test(specIndex[k]);
+          scored.push({ key:k, verParts:parseVerParts(ver), isLocal, page:idx[section], ver });
+        });
+        if(!scored.length) return null;
+        scored.sort(function(a,b){
+          if(a.isLocal !== b.isLocal) return a.isLocal ? -1 : 1; // 本地优先
+          return cmpVer(b.verParts, a.verParts); // 版本高优先
+        });
+        return scored[0];
+      }
+      function applyIndex(){
+        let versionUse=String(versionRaw||'').trim();
+        let candidates=buildCandidates(tsRaw, versionUse, section, ref);
+        const key=String(tsRaw||'').trim()+'@'+versionUse;
+        let injected=false;
+        let useKey=key;
+        let best = pickBestKey(tsRaw, versionUse);
+        if(!specIndex || !specIndex[useKey]){
+          if(best.key){
+            useKey=best.key;
+            if(best.ver){
+              versionUse = best.ver;
+              candidates = buildCandidates(tsRaw, versionUse, section, ref);
+            }
+          }
+        } else {
+          // 版本命中但有更高版本时也可替换使用
+          if(best.key && best.key!==useKey){
+            useKey=best.key;
+            if(best.ver){
+              versionUse = best.ver;
+              candidates = buildCandidates(tsRaw, versionUse, section, ref);
+            }
+          } else if(!versionUse && best.ver){
+            versionUse = best.ver;
+            candidates = buildCandidates(tsRaw, versionUse, section, ref);
+          }
+        }
+        const mapped=specIndex && specIndex[useKey];
+        let variants = keyVariants(tsRaw, versionUse);
+        if(useKey && variants.indexOf(useKey)<0) variants.unshift(useKey);
+        function pickIndex(obj){
+          if(!obj) return null;
+          for(let i=0;i<variants.length;i++){ const k=variants[i]; if(obj[k]) return obj[k]; }
+          return null;
+        }
+        const secNorm=normSection(section);
+        const secMap=pickIndex(sectionIndex);
+        const titleMap=pickIndex(titleIndex);
+        const secTitle=normTitle(section);
+        const refTitle=normTitle(ref);
+        const titleCandidates=[];
+        [secTitle, stripTitleNumbers(secTitle), refTitle, stripTitleNumbers(refTitle)].forEach(function(t){ if(t) titleCandidates.push(t); });
+        let pageHit=null;
+        let pageHitKey='';
+        let pageHitIsLocal=false;
+        if(secNorm && secMap && secMap[secNorm]){
+          var offSection = (typeof secMap._offset==='number') ? secMap._offset : 0;
+          pageHit = { page: offSection + secMap[secNorm] };
+          pageHitKey = useKey;
+          pageHitIsLocal = (specIndex[useKey] && !/^https?:\/\//i.test(String(specIndex[useKey])));
+        } else if(titleMap && titleCandidates.length){
+          for(let i=0;i<titleCandidates.length;i++){
+            const t=titleCandidates[i];
+            if(t && (t in titleMap)){
+              pageHit = { page: titleMap[t] };
+              pageHitKey = useKey;
+              pageHitIsLocal = (specIndex[useKey] && !/^https?:\/\//i.test(String(specIndex[useKey])));
+              break;
+            }
+          }
+        }
+        function appendPage(u, p){ if(p===null || p===undefined) return u; if(String(u||'').indexOf('#page=')>=0) return u; return (u||'')+'#page='+p; }
+        if(mapped){
+          let url=mapped;
+          if(pageHit) url = appendPage(url, pageHit.page);
+          const isRemote = /^https?:\/\//i.test(String(url||''));
+          if(!isRemote){ candidates.unshift({ label:'Index mapped (local)', url }); injected=true; }
+        }
+        if(!pageHit){
+          const mergedIndex = Object.assign({}, sectionIndex);
+          // 将 outline 合并进回退搜索，以便跨版本寻找有页码的最佳本地版本
+          for(const kk in outlineIndex){ mergedIndex[kk] = outlineIndex[kk]; }
+          const alt = findBestWithPage(tsRaw, secNorm, mergedIndex);
+          if(alt){
+            pageHit = { page: alt.page };
+            pageHitKey = alt.key;
+            pageHitIsLocal = alt.isLocal;
+            useKey = alt.key;
+            if(alt.ver) versionUse = alt.ver;
+            const altUrl = specIndex[alt.key];
+            if(altUrl){
+              candidates.unshift({ label:'Index mapped (local, best available version '+(alt.ver||'')+')', url: appendPage(altUrl, pageHit.page) });
+              injected=true;
+            }
+          }
+        }
+        else {
+          // 已有页码，但如果它来自远程或低版本，尝试找到本地更高版本的页码替换
+          const mergedIndex = Object.assign({}, sectionIndex);
+          for(const kk in outlineIndex){ mergedIndex[kk] = outlineIndex[kk]; }
+          const alt = findBestWithPage(tsRaw, secNorm, mergedIndex);
+          if(alt && (!pageHitIsLocal || cmpVer(alt.verParts, parseVerParts(versionUse))>0)){
+            pageHit = { page: alt.page };
+            pageHitKey = alt.key;
+            pageHitIsLocal = alt.isLocal;
+            useKey = alt.key;
+            if(alt.ver) versionUse = alt.ver;
+            const altUrl = specIndex[alt.key];
+            if(altUrl){
+              candidates.unshift({ label:'Index mapped (local, best available version '+(alt.ver||'')+')', url: appendPage(altUrl, pageHit.page) });
+              injected=true;
+            }
+          }
+        }
+        if(pageHit){
+          for(let i=0;i<candidates.length;i++){
+            const c=candidates[i];
+            if(c.pageFromIndex){
+              c.url = appendPage(c.url, pageHit.page);
+            }
+          }
+        }
+        async function tryRedirect(list){
+          function sameOrigin(u){ try{ const a=new URL(u, location.href); return a.origin===location.origin; }catch(_){ return false; } }
+          for(let i=0;i<list.length;i++){
+            const u=list[i].url||''; if(!u) continue;
+            try{
+              if(!sameOrigin(u)){
+                if(embed==='1'){ document.getElementById('frame').src=u; }
+                else { location.replace(u); }
+                return;
+              }
+              const r = await fetch(u, { method:'GET' });
+              if(r && (r.ok || r.status===200)){
+                if(embed==='1'){ document.getElementById('frame').src=u; }
+                else { location.replace(u); }
+                return;
+              }
+            }catch(_){ }
+          }
+          const first=list[0]||{}; document.getElementById('frame').src=first.url||'';
+        }
+        const filtered = candidates.filter(function(c){
+          if(!c || !c.url) return false;
+          const isRemote = /^https?:\/\//i.test(String(c.url||''));
+          return localOnly ? !isRemote : true;
+        });
+        (filtered.length?filtered:candidates).forEach(function(c){ const a=document.createElement('a'); a.href=c.url; a.textContent=c.label; a.target='_blank'; a.rel='noopener'; linksDiv.appendChild(a); });
+        if(filtered.length){ tryRedirect(filtered); }
+      }
+      Promise.all([loadSpecIndex, loadSectionIndex, loadOutlineIndex, loadTitleIndex]).then(()=>{
+        try{
+          if(outlineIndex && typeof outlineIndex==='object'){
+            const merged = Object.assign({}, sectionIndex);
+            for(const k in outlineIndex){
+              const src=outlineIndex[k];
+              if(!src) continue;
+              if(!merged[k]) merged[k] = src;
+              else {
+                for(const sk in src){ merged[k][sk] = src[sk]; } // 书签页优先覆盖目录估算
+              }
+            }
+            sectionIndex = merged;
+          }
+          applyIndex();
+        }catch(_){ }
+      });
     })();
   </script>
 </body>
