@@ -1,6 +1,6 @@
-# CallFlowWeaver / Viewer
+# CallFlowWeaver
 
-CallFlowWeaver / Viewer is a lightweight, static web UI for working with **telecom protocol messages and call flows** on top of a structured “truth” data model.
+CallFlowWeaver is a lightweight, static web UI for working with **telecom protocol messages and call flows** on top of a structured “truth” data model.
 
 It is designed for large 5GC / 3GPP datasets first, with a long-term goal of supporting **all kinds of communication messages** — both **3GPP and non-3GPP**.
 
